@@ -17,6 +17,7 @@ matrix(array_2d): Creates a Matrix object from a 2D list.
 zeros(dim): Creates a matrix of the given dimensions filled with zeros.
 ones(dim): Creates a matrix of the given dimensions filled with ones.
 fill(value, dim): Creates a matrix of the given dimensions filled with a specified value.
+eye(N): Creates an identity matrix of dimensions (N x N)
 
 Matrix Properties:
 row: Returns the number of rows.
@@ -45,7 +46,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.1.1"
+version = "0.1.2"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
@@ -63,6 +64,18 @@ def fill(value: int|float,dim: Tuple):
     if len(dim) == 2:
         return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
+
+def eye(N: int):
+    new_mat = []
+    for x in range(N):
+        buffer = []
+        for y in range(N):
+            if x == y:
+                buffer.append(1)
+            else:
+                buffer.append(0)
+        new_mat.append(buffer)
+    return Matrix(new_mat)
 
 class Matrix:
     def __init__(self,array_2d):
