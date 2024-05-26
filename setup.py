@@ -6,7 +6,8 @@ setup(
     author = "Sahil Rajwar",
     description = "python library for doing calculations with matrices",
     long_description = open("README.md").read(),
-    long_description_content_type = 'text/markdown',
+    long_description_content_type = "text/markdown",
+    license = "MIT",
     url = "https://github.com/Sahil-Rajwar-2004/matrix.py",
     packages = find_packages(),
     classifiers = [
