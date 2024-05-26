@@ -45,7 +45,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.1"
+version = "0.1.1"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
