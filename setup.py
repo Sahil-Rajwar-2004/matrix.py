@@ -1,16 +1,17 @@
-from setuptools import setup, find_packages
+from setuptools import setup,find_packages
+
 
 setup(
     name = "matrix",
-    version = "0.1.2",
+    version = "0.2.0",
     author = "Sahil Rajwar",
     description = "python library for doing calculations with matrices",
-    long_description = open("README.md").read(),
+    long_description = open("README.md","r",encoding = "utf-8").read(),
     long_description_content_type = "text/markdown",
     license = "MIT",
     url = "https://github.com/Sahil-Rajwar-2004/matrix.py",
     packages = find_packages(),
-    requires = ["numpy"],
+    install_requires = ["numpy"],
     classifiers = [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
