@@ -17,7 +17,8 @@ matrix(array_2d): Creates a Matrix object from a 2D list.
 zeros(dim): Creates a matrix of the given dimensions filled with zeros.
 ones(dim): Creates a matrix of the given dimensions filled with ones.
 fill(value, dim): Creates a matrix of the given dimensions filled with a specified value.
-eye(N): Creates an identity matrix of dimensions (N x N)
+eye(N): Creates an identity matrix of dimensions (N x N).
+random: Creates a matrix with random value and shape (M x N).
 
 Matrix Properties:
 row: Returns the number of rows.
@@ -46,7 +47,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.1.2"
+version = "0.2.0"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
@@ -76,6 +77,18 @@ def eye(N: int):
                 buffer.append(0)
         new_mat.append(buffer)
     return Matrix(new_mat)
+
+def random(dim: Tuple[int,int],seed = None):
+    new_mat = []
+    if seed is not None:
+        np.random.seed(seed)
+    for _ in range(dim[0]):
+        buffer = []
+        for _ in range(dim[1]):
+            buffer.append(np.random.randint(0,2))
+        new_mat.append(buffer)
+    return Matrix(new_mat)
+
 
 class Matrix:
     def __init__(self,array_2d):
@@ -149,18 +162,44 @@ class Matrix:
 
     def __eq__(self,other):
         if isinstance(other,(int,float)):
-            raise ValueError("can't compare `Matrix` with `int/float`")
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    if self.__matrix[row][x] == other:
+                        continue
+                    else:
+                        return False
         elif isinstance(other,Matrix):
             if self.__shape != other.__shape:
                 raise ValueError("shape of matrices doesn't match")
             for row in range(self.__row):
                 for x in range(self.__col):
-                    if self[row][x] == other[row][x]:
+                    if self.__matrix[row][x] == other.__matrix[row][x]:
                         continue
                     else:
                         return False
         else:
             raise ValueError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+        return True
+
+    def __ne__(self,other):
+        if isinstance(other,(int,float)):
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    if self.__matrix[row][x] == other:
+                        continue
+                    else:
+                        return False
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    if self.__matrix[row][x] == other.__matrix[row][x]:
+                        continue
+                    else:
+                        return False
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
         return True
 
     def __add__(self,other):
@@ -324,6 +363,208 @@ class Matrix:
                 raise ValueError("shape of the matrices must be equal")
         else:
             raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def __pos__(self): return Matrix(self.__matrix)
+
+    def __neg__(self):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                buffer.append(-self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat)
+
+    def eq(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] == other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] == other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def ne(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] != other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] != other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+
+    def lt(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] < other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] < other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def gt(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] > other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] > other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def le(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] <= other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] <= other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def ge(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] >= other:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("can't compare two matrices with different shapes")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    if self.__matrix[row][x] >= other.__matrix[row][x]:
+                        buffer.append(True)
+                    else:
+                        buffer.append(False)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def reciprocate(self):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                buffer.append(1 / self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat)
+
+    def is_null(self):
+        for row in range(self.__row):
+            for x in range(self.__col):
+                if self.__matrix[row][x] == 0:
+                    continue
+                else:
+                    return False
+        return True
+
+    def pos(self): return +self
+
+    def neg(self): return -self
 
     def add(self,other): return self + other
 
