@@ -47,7 +47,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.2.0"
+version = "0.3.0"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
@@ -78,7 +78,7 @@ def eye(N: int):
         new_mat.append(buffer)
     return Matrix(new_mat)
 
-def random(dim: Tuple[int,int],seed = None):
+def random(dim: Tuple[int,int],seed:None|int = None):
     new_mat = []
     if seed is not None:
         np.random.seed(seed)
@@ -375,6 +375,74 @@ class Matrix:
             new_mat.append(buffer)
         return Matrix(new_mat)
 
+    def __and__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    buffer.append(self.__matrix[row][x] & other)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("shape of the matrices must be equal")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    buffer.append(self.__matrix[row][x] & other.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def __or__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    buffer.append(self.__matrix[row][x] | other)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("shape of the matrices must be equal")
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
+    def __invert__(self):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                buffer.append(~self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat)
+
+    def __xor__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    buffer.append(self.__matrix[row][x] ^ other)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            if self.__shape != other.__shape:
+                raise ValueError("shape of the matrices must be equal")
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col):
+                    buffer.append(self.__matrix[row][x] ^ other.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        else:
+            raise TypeError(f"`{type(other).__name__}` isn't compatible with `Matrix`")
+
     def eq(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
@@ -581,6 +649,119 @@ class Matrix:
     def truediv(self,other): return self / other
 
     def floordiv(self,other): return self // other
+
+    def AND(self,other): return self & other
+
+    def NAND(self,other): return ~(self & other)
+
+    def OR(self,other): return self | other
+
+    def NOR(self,other): return ~(self | other)
+
+    def INVERT(self): return ~self
+
+    def XOR(self,other): return self ^ other
+
+    def XNOR(self,other): return ~(self ^ other)
+
+    def mean(self,axis = 1):
+        if axis == 1:
+            new_mat = []
+            for row in range(self.__row):
+                total = 0
+                for x in range(self.__col):
+                    total += self.__matrix[row][x]
+                new_mat.append([total / self.__col])
+            return Matrix(new_mat)
+        elif axis == 0:
+            new_mat = []
+            for x in range(self.__col):
+                total = 0
+                for row in range(self.__row):
+                    total += self.__matrix[row][x]
+                new_mat.append([total / self.__row])
+            return Matrix(new_mat)
+        else:
+            raise ValueError("invalid axis given!")
+
+    def var(self,axis = 1):
+        if axis == 1:
+            new_mat = []
+            for row in range(self.__row):
+                total = 0
+                for x in range(self.__col):
+                    total += (self.__matrix[row][x] - self.mean(axis = 1)) ** 2.0
+                new_mat.append([total / self.__col])
+            return Matrix(new_mat)
+        elif axis == 0:
+            new_mat = []
+            for x in range(self.__col):
+                total = 0
+                for row in range(self.__row):
+                    total += (self.__matrix[row][x] - self.mean(axis = 0)) ** 2.0
+                new_mat.append([total / self.__row])
+            return Matrix(new_mat)
+        else:
+            raise ValueError("invalid axis given!")
+
+    def std(self,axis = 1): return Matrix(self.var(axis = axis).sqrt())
+
+    def median(self,axis = 1):
+        if axis == 1:
+            new_mat = []
+            for row in range(self.__row):
+                sorted_row = sorted(self.__matrix[row])
+                mid = self.__col // 2
+                if self.__col % 2 == 0:
+                    median_value = (sorted_row[mid - 1] + sorted_row[mid]) / 2.0
+                else:
+                    median_value = sorted_row[mid]
+                new_mat.append([median_value])
+            return Matrix(new_mat)
+        elif axis == 0:
+            new_mat = []
+            for x in range(self.__col):
+                col_values = [self.__matrix[row][x] for row in range(self.__row)]
+                sorted_col = sorted(col_values)
+                mid = self.__row // 2
+                if self.__row % 2 == 0:
+                    median_value = (sorted_col[mid - 1] + sorted_col[mid]) / 2.0
+                else:
+                    median_value = sorted_col[mid]
+                new_mat.append(median_value)
+            return Matrix([new_mat])
+        else:
+            raise ValueError("invalid axis given!")
+
+    def sort(self,axis = 1):
+        if axis == 1:
+            new_mat = [sorted(row) for row in self.__matrix]
+            return Matrix(new_mat)
+        elif axis == 0:
+            new_mat = [[self.__matrix[row][col] for row in range(self.__row)] for col in range(self.__col)]
+            sorted_mat = [sorted(col) for col in new_mat]
+            transposed_sorted_mat = [[sorted_mat[col][row] for col in range(self.__col)] for row in range(self.__row)]
+            return Matrix(transposed_sorted_mat)
+        else:
+            raise ValueError("invalid axis given!")
+
+    def sqrt(self):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                buffer.append(self.__matrix[row][x] ** 0.5)
+            new_mat.append(buffer)
+        return Matrix(new_mat)
+
+    def cbrt(self):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                buffer.append(self.__matrix[row][x] ** (1/3))
+            new_mat.append(buffer)
+        return Matrix(new_mat)
 
     def floor(self):
         new_mat = []
