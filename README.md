@@ -4,7 +4,7 @@
 
 ## Installation
 ```bash
-pip install matrix
+pip install <latest-matrix-version-wheel-file>
 ```
 
 ## Usage
