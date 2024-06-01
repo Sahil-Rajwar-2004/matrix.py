@@ -47,7 +47,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.3.0"
+version = "0.3.1"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
@@ -733,6 +733,62 @@ class Matrix:
         else:
             raise ValueError("invalid axis given!")
 
+    def max(self,axis: None|int = None):
+        if axis is None:
+            result = -float("inf")
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    value = self.__matrix[row][x]
+                    if result < value:
+                        result = value
+            return result
+        elif axis == 0:
+            result = [-float("inf")] * self.__col
+            for x in range(self.__col):
+                for row in range(self.__row):
+                    value = self.__matrix[row][x]
+                    if result[x] < value:
+                        result[x] = value
+            return result
+        elif axis == 1:
+            result = [-float("inf")] * self.__row
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    value = self.__matrix[row][x]
+                    if result[row] < value:
+                        result[row] = value
+            return result
+        else:
+            raise ValueError("invalid argument for axis it can either be None, 0 or 1")
+    
+    def min(self,axis: None|int = None):
+        if axis is None:
+            result = float("inf")
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    value = self.__matrix[row][x]
+                    if result > value:
+                        result = value
+            return result
+        elif axis == 0:
+            result = [float("inf")] * self.__col
+            for x in range(self.__col):
+                for row in range(self.__row):
+                    value = self.__matrix[row][x]
+                    if result[x] > value:
+                        result[x] = value
+            return result
+        elif axis == 1:
+            result = [float("inf")] * self.__row
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    value = self.__matrix[row][x]
+                    if result[row] > value:
+                        result[row] = value
+            return result
+        else:
+            raise ValueError("invalid argument for axis it can either be None, 0 or 1")
+    
     def sort(self,axis = 1):
         if axis == 1:
             new_mat = [sorted(row) for row in self.__matrix]
