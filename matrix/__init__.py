@@ -47,7 +47,7 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple
 import numpy as np
 
-version = "0.3.1"
+version = "0.3.2"
 
 def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
 
@@ -78,7 +78,19 @@ def eye(N: int):
         new_mat.append(buffer)
     return Matrix(new_mat)
 
-def random(dim: Tuple[int,int],seed:None|int = None):
+def diagonal(value: int|float,N: int):
+    new_mat = []
+    for row in range(N):
+        buffer = []
+        for x in range(N):
+            if row == x:
+                buffer.append(value)
+            else:
+                buffer.append(0)
+        new_mat.append(buffer)
+    return Matrix(new_mat)
+
+def random(dim: Tuple[int,int],seed :None|int = None):
     new_mat = []
     if seed is not None:
         np.random.seed(seed)
@@ -99,6 +111,7 @@ class Matrix:
         self.__col = len(array_2d[0])
         self.__size = self.__row * self.__col
         self.__shape = self.__row,self.__col
+        self.__iter_index = 0
 
     def __check__(self,array_2d):
         num_elements_in_first_row = len(array_2d[0])
@@ -106,6 +119,19 @@ class Matrix:
             if len(row) != num_elements_in_first_row:
                 raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
         return True
+
+    def __iter__(self):
+        self.__iter_index = 0
+        return self
+
+    def __next__(self):
+        if self.__iter_index < self.__size:
+            row = self.__iter_index // self.__col
+            col = self.__iter_index % self.__col
+            self.__iter_index += 1
+            return self.__matrix[row][col]
+        else:
+            raise StopIteration
 
     def __repr__(self):
         return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape}>"
@@ -257,9 +283,9 @@ class Matrix:
             new_mat = []
             if self.__shape != other.__shape:
                 raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
-            for row in range(self.__matrix):
+            for row in range(self.__row):
                 buffer = []
-                for x in range(len(self.__matrix[0])):
+                for x in range(self.__col):
                     buffer.append(self.__matrix[row][x] * other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
@@ -630,6 +656,20 @@ class Matrix:
                     return False
         return True
 
+    def mat_pow(self,n: int):
+        if not isinstance(n,int):
+            raise TypeError(f"given base must be an integer not `{type(n).__name__}`")
+        elif n < 0:
+            raise ValueError("`n` must be greater than 0")
+        result = Matrix([[1 if i == j else 0 for j in range(self.__col)] for i in range(self.__row)])
+        base = self
+        while n > 0:
+            if n % 2 == 1:
+                result = result @ base
+            base = base @ base
+            n //= 2
+        return result
+
     def pos(self): return +self
 
     def neg(self): return -self
@@ -980,6 +1020,24 @@ class Matrix:
         if not self.is_square():
             raise ValueError("matrix must have equal number of rows and columns")
         return self.det() != 0
+
+    def is_symmetric(self):
+        if self.__row != self.__col:
+            return False
+        for row in range(self.__row):
+            for x in range(self.__col):
+                if self.__matrix[row][x] != self.__matrix[x][row]:
+                    return False
+        return True
+
+    def is_skew_symmetric(self):
+        if self.__row != self.__col:
+            return False
+        for i in range(self.__row):
+            for j in range(self.__col):
+                if self.__matrix[i][j] != -self.__matrix[j][i]:
+                    return False
+        return True
 
     def is_singular(self):
         if not self.is_square():
