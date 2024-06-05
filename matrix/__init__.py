@@ -52,7 +52,7 @@ import json
 import csv
 import os
 
-version = "0.4.0"
+version = "0.4.1"
 
 def matrix(array_2d: List[List[Union[int,float]]]): return Matrix(array_2d)
 
@@ -111,7 +111,7 @@ def random(dim: Tuple[int,int],seed :None|int = None):
         new_mat.append(buffer)
     return Matrix(new_mat)
 
-def from_csv(filename: str):
+def read_csv(filename: str):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
     with open(filename,"r") as file:
@@ -119,7 +119,7 @@ def from_csv(filename: str):
         data = [list(map(float,row)) for row in reader]
     return Matrix(data)
 
-def from_json(filename: str):
+def read_json(filename: str):
     if not os.path.exists(filename):
         raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
     new_mat = []
@@ -215,7 +215,7 @@ class Matrix:
             return cls(array.tolist())
         raise TypeError("input should be a numpy array")
 
-    def to_numpy(self): return np.array(self.__matrix)
+    def numpy(self): return np.array(self.__matrix)
 
     def __eq__(self,other):
         if isinstance(other,(int,float)):
@@ -806,6 +806,15 @@ class Matrix:
                 file.write("\n")
             file.close()
 
+    def to_dict(self):
+        result = {}
+        for row in range(self.__row):
+            result[f"{row}"] = self.__matrix[row]
+        return result
+
+    def to_list(self):
+        return self.__matrix
+
     def mean(self,axis = 1):
         if axis == 1:
             new_mat = []
@@ -1084,7 +1093,7 @@ class Matrix:
     def eigen(self):
         if not self.is_square():
             raise ValueError("eigen values and its vectors are defined only for square matrices")
-        value,vec = np.linalg.eig(self.to_numpy())
+        value,vec = np.linalg.eig(self.numpy())
         return value,Matrix(vec.tolist())
 
     def cofactor(self,i,j):
