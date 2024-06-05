@@ -17,7 +17,7 @@ matrix(array_2d): Creates a Matrix object from a 2D list.
 zeros(dim): Creates a matrix of the given dimensions filled with zeros.
 ones(dim): Creates a matrix of the given dimensions filled with ones.
 fill(value, dim): Creates a matrix of the given dimensions filled with a specified value.
-eye(N): Creates an identity matrix of dimensions (N x N).
+identity(N): Creates an identity matrix of dimensions (N x N).
 random: Creates a matrix with random value and shape (M x N).
 
 Matrix Properties:
@@ -43,30 +43,40 @@ to_numpy(): Converts the Matrix object to a NumPy array.
 
 """
 
-
-from typing import List,Tuple
+from typing import List,Tuple,Union
+from matplotlib import pyplot as plt
+import networkx as netx
+import seaborn as sns
 import numpy as np
+import json
+import csv
+import os
 
-version = "0.3.2"
+version = "0.4.0"
 
-def matrix(array_2d: List[List[int|float]]): return Matrix(array_2d)
+def matrix(array_2d: List[List[Union[int,float]]]): return Matrix(array_2d)
 
 def zeros(dim: Tuple):
     if len(dim) == 2:
         return Matrix([[0 for _ in range(dim[1])] for _ in range(dim[0])])
-    raise ValueError("dimension consist only number rows and columns")
+    raise ValueError("dimension consist only number of rows and columns")
+
+def null(dim: Tuple[Union[int,float]]):
+    if len(dim) == 3:
+        return Matrix([[0 for _ in range(dim(1))] for _ in range(dim[0])])
+    raise ValueError("dimension consist only number of rows and columns")
 
 def ones(dim: Tuple):
     if len(dim) == 2:
         return Matrix([[1 for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
 
-def fill(value: int|float,dim: Tuple):
+def fill(value: Union[int,float],dim: Tuple):
     if len(dim) == 2:
         return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
 
-def eye(N: int):
+def identity(N: int):
     new_mat = []
     for x in range(N):
         buffer = []
@@ -99,6 +109,24 @@ def random(dim: Tuple[int,int],seed :None|int = None):
         for _ in range(dim[1]):
             buffer.append(np.random.randint(0,2))
         new_mat.append(buffer)
+    return Matrix(new_mat)
+
+def from_csv(filename: str):
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
+    with open(filename,"r") as file:
+        reader = csv.reader(file)
+        data = [list(map(float,row)) for row in reader]
+    return Matrix(data)
+
+def from_json(filename: str):
+    if not os.path.exists(filename):
+        raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
+    new_mat = []
+    with open(filename,"r") as file:
+        data = json.load(file)
+        for x in range(len(data.keys())):
+            new_mat.append(data[f"{x}"])
     return Matrix(new_mat)
 
 
@@ -135,6 +163,9 @@ class Matrix:
 
     def __repr__(self):
         return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape}>"
+
+    def __del__(self):
+        del self
 
     def __getitem__(self,indices):
         if isinstance(indices,tuple):
@@ -704,6 +735,77 @@ class Matrix:
 
     def XNOR(self,other): return ~(self ^ other)
 
+    def copy(self):
+        return Matrix([row[:] for row in self.__matrix])
+
+    def get(self,row: int,col: None|int = None):
+        if col is None:
+            return self.__matrix[row]
+        else:
+            return self.__matrix[row][col]
+
+    def set(self,row: int,value: List[int | float] | int | float,col: None|int = None):
+        if col is None:
+            if isinstance(value,list) and len(value) == self.__col:
+                self.__matrix[row] = value
+                return
+            raise TypeError(f"can't set `{type(value).__name__}` to matrix row")
+        else:
+            self.__matrix[row][col] = value
+
+    def concate(self,other,axis = 0):
+        if isinstance(other, Matrix):
+            if axis == 0:
+                if self.__col != other.__col:
+                    raise ValueError("Matrices must have the same number of columns to concatenate vertically")
+                new_matrix = self.__matrix + other.__matrix
+            elif axis == 1:
+                if self.__row != other.__row:
+                    raise ValueError("Matrices must have the same number of rows to concatenate horizontally")
+                new_matrix = [self.__matrix[row] + other.__matrix[row] for row in range(self.__row)]
+            else:
+                raise ValueError("Axis must be 0 (vertical) or 1 (horizontal)")
+        elif isinstance(other, list):
+            if axis == 0:
+                if len(other) != self.__col:
+                    raise ValueError("The list must have the same number of elements as there are columns in the matrix to concatenate vertically")
+                new_matrix = self.__matrix + [other]
+            elif axis == 1:
+                if len(other) != self.__row:
+                    raise ValueError("the list must have the same number of elements as there are rows in the matrix to concatenate horizontally")
+                new_matrix = [self.__matrix[row] + [other[row]] for row in range(self.__row)]
+            else:
+                raise ValueError("axis must be 0 (vertical) or 1 (horizontal)")
+        else:
+            raise TypeError(f"couldn't add `{type(other).__name__}` and `Matrix`, other must be `list` or `Matrix`")
+        return Matrix(new_matrix)
+
+    def to_json(self,file_path: str):
+        if os.path.exists(file_path):
+            raise FileExistsError(f"file with name `{file_path}` already exist!")
+        with open(file_path,"w") as file:
+            file.write("{\n")
+            for row in range(self.__row):
+                if row == self.__row - 1:
+                    file.write(f'   "{row}": {self.__matrix[row]}\n')
+                else:
+                    file.write(f'   "{row}": {self.__matrix[row]},\n')
+            file.write("}\n")
+            file.close()
+
+    def to_csv(self,file_path: str):
+        if os.path.exists(file_path):
+            raise FileExistsError(f"file with name `{file_path}` already exist!")
+        with open(file_path,"w") as file:
+            for row in range(self.__row):
+                for x in range(self.__col):
+                    if x == self.__col - 1:
+                        file.write(f"{self.__matrix[row][x]}")
+                    else:
+                        file.write(f"{self.__matrix[row][x]},")
+                file.write("\n")
+            file.close()
+
     def mean(self,axis = 1):
         if axis == 1:
             new_mat = []
@@ -1120,4 +1222,60 @@ class Matrix:
     def inf_norm(self):
         row_sums = [sum(abs(x) for x in row) for row in self.__matrix]
         return max(row_sums)
+
+    def cholesky(self):
+        if self.__row != self.__col:
+            raise ValueError("Matrix must be square for Cholesky decomposition")
+        dense = np.array(self.__matrix)
+        if not np.allclose(dense, dense.T):
+            raise ValueError("Matrix must be symmetric for Cholesky decomposition")
+        L = np.zeros_like(dense)
+        for i in range(self.__row):
+            for j in range(i + 1):
+                sum_k = sum(L[i][k] * L[j][k] for k in range(j))
+                if i == j:
+                    L[i][j] = np.sqrt(dense[i][i] - sum_k)
+                else:
+                    L[i][j] = (dense[i][j] - sum_k) / L[j][j]
+        return Matrix(L.tolist())
+
+    def rank(self):
+        mat = self.__matrix.copy()
+        rank = 0
+        for i in range(min(self.__row,self.__col)):
+            pivot_row = None
+            for j in range(i,self.__row):
+                if mat[j][i] != 0:
+                    pivot_row = j
+                    break
+            if pivot_row is not None:
+                mat[i],mat[pivot_row] = mat[pivot_row],mat[i]
+                rank += 1
+                for j in range(i + 1,self.__row):
+                    factor = mat[j][i] / mat[i][i]
+                    for k in range(i,self.__col):
+                        mat[j][k] -= factor * mat[i][k]
+        return rank
+
+    def heatmap(self,title = "Matrix HeatMap",cmap = "viridis"):
+        plt.figure(figsize = (8,6))
+        sns.heatmap(self.__matrix,annot = True,fmt = "d",cmap = cmap,cbar = True)
+        plt.title(title)
+        plt.xlabel("Columns")
+        plt.ylabel("Rows")
+        plt.show()
+
+    def graph(self,title = "Graph Visualization of Matrix"):
+        G = netx.Graph()
+        for row in range(self.__row):
+            for x in range(self.__col):
+                if self.__matrix[row][x] != 0:
+                    G.add_edge(row,x,weight = self.__matrix[row][x])
+        pos = netx.spring_layout(G)
+        edge_labels = netx.get_edge_attributes(G,"weight")
+        plt.figure(figsize = (8,6))
+        netx.draw(G,pos,with_labels = True,node_color = "orange",edge_color = "blue",node_size = 500,alpha = 0.8)
+        netx.draw_networkx_edge_labels(G,pos,edge_labels = edge_labels,font_color = "red")
+        plt.title(title)
+        plt.show()
 
