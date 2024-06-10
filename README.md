@@ -3,8 +3,9 @@
 ## ***python library for calculations with matrices***
 
 ## Installation
+click here to download latest version -> [v-0.4.2](https://github.com/Sahil-Rajwar-2004/matrix.py/releases/download/v0.4.2/matrix-0.4.2-py3-none-any.whl)
 ```bash
-pip install <latest-matrix-version-wheel-file>
+pip install <latest-version-whl>
 ```
 
 ## Usage
