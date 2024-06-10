@@ -15,8 +15,8 @@ x = Matrix([[1,2,3],[4,5,6]])
 y = Matrix([[2,3,4],[5,6,7]])
 
 print(x)
-print(x.to_numpy())
-print((x + y).to_numpy())
+print(x.numpy())
+print((x + y).numpy())
 
 ```
 
