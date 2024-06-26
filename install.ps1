@@ -19,16 +19,19 @@ if (Test-Path "./setup.py") {
 }
 
 python ./setup.py sdist bdist_wheel
-Set-Location ./dist
-pip install *.whl
-Set-Location ..
-Remove-Item -Recurse -Force ./dist, ./build, ./matrix.egg-info
+$whlPath = Get-ChildItem -Recurse -Force ".\dist\*.whl"
+pip install $whlPath
+
+Remove-Item -Recurse -Force "./dist", "./build", "./matrix.egg-info" -ErrorAction SilentlyContinue
 
 pip show $pkg > null 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "$pkg lib has been installed successfully"
 } else {
-    Write-Host "something bad has happened! try to install manually"
+    Write-Host "something bad has happened! try to install manually use (python setup.py sdist bdist_wheel)"
     exit 1
 }
+
+Remove-Item -Force "./null"
+
