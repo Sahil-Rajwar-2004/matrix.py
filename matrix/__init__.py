@@ -16,9 +16,15 @@ Creation Functions:
 matrix(array_2d): Creates a Matrix object from a 2D list.
 zeros(dim): Creates a matrix of the given dimensions filled with zeros.
 ones(dim): Creates a matrix of the given dimensions filled with ones.
+null(dim): Creates a matrix of the given dimensions filled with null(nan) values
 fill(value, dim): Creates a matrix of the given dimensions filled with a specified value.
 identity(N): Creates an identity matrix of dimensions (N x N).
 random: Creates a matrix with random value and shape (M x N).
+zeros_like(mat): Creates a matrix from the given matrix with zeros
+ones_like(mat): Creates a matrix from the given matrix with ones
+rand_like(mat): Creates a matrix from the given matrix with random numbers
+null_like(mat): Creates a matrix from the given matrix with null(nan) values
+fill_like(mat): Creates a matrix form the given matrix with a value as an argument
 
 Matrix Properties:
 row: Returns the number of rows.
@@ -52,29 +58,39 @@ import json
 import csv
 import os
 
-version = "0.4.2"
+version = "0.4.3"
 
 def matrix(array_2d: List[List[Union[int,float]]]): return Matrix(array_2d)
 
-def zeros(dim: Tuple):
+def zeros(dim: Tuple[int,int]):
     if len(dim) == 2:
         return Matrix([[0 for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
 
-def null(dim: Tuple[Union[int,float]]):
-    if len(dim) == 3:
-        return Matrix([[0 for _ in range(dim(1))] for _ in range(dim[0])])
+def null(dim: Tuple[int,int]):
+    if len(dim) == 2:
+        return Matrix([[0 for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
 
-def ones(dim: Tuple):
+def ones(dim: Tuple[int,int]):
     if len(dim) == 2:
         return Matrix([[1 for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
 
-def fill(value: Union[int,float],dim: Tuple):
+def fill(dim: Tuple[int,int],value: int|float|bool):
     if len(dim) == 2:
         return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])])
     raise ValueError("dimension consist only number of rows and columns")
+
+def ones_like(mat: "Matrix"): return ones((mat.row,mat.col))
+
+def zeros_like(mat: "Matrix"): return zeros((mat.row,mat.col))
+
+def null_like(mat: "Matrix"): return null((mat.row,mat.col))
+
+def rand_like(mat: "Matrix",seed: None|int = None): return rand((mat.row,mat.col),seed)
+
+def fill_like(mat: "Matrix",value: int|float|bool): return fill((mat.row,mat.col),value)
 
 def identity(N: int):
     new_mat = []
@@ -100,14 +116,14 @@ def diagonal(value: int|float,N: int):
         new_mat.append(buffer)
     return Matrix(new_mat)
 
-def random(dim: Tuple[int,int],seed :None|int = None):
+def rand(dim: Tuple[int,int],seed :None|int = None):
     new_mat = []
     if seed is not None:
         np.random.seed(seed)
     for _ in range(dim[0]):
         buffer = []
         for _ in range(dim[1]):
-            buffer.append(np.random.randint(0,2))
+            buffer.append(np.random.rand())
         new_mat.append(buffer)
     return Matrix(new_mat)
 
