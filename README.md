@@ -18,7 +18,7 @@ print((x + y).numpy())      # [[ 3 5 7] [ 9 11 13]]
 ## Installation Instruction
 
 1. clone this repo  
-       ```bash
+       ```
        git clone "https://github.com/Sahil-Rajwar-2004/matrix.py.git"
        ```
 
@@ -29,13 +29,13 @@ print((x + y).numpy())      # [[ 3 5 7] [ 9 11 13]]
 ## Windows Users
 
 4. If you are on Window OS then run the `install.ps1` script  
-       ```powershell
+       ```
        pwsh install.ps1
        ```
 
 ## OR Linux / MacOS Users
 
 4. If you are on Linux / MacOS then run the `install.sh` script  
-       ```bash
+       ```
        bash install.sh
        ```
