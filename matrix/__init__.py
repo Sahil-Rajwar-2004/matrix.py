@@ -27,6 +27,7 @@ null_like(mat): Creates a matrix from the given matrix with null(nan) values
 fill_like(mat): Creates a matrix form the given matrix with a value as an argument
 
 Matrix Properties:
+symbol: Returns the unique symbol of that specific matrix
 row: Returns the number of rows.
 col: Returns the number of columns.
 shape: Returns the shape (dimensions) of the matrix.
@@ -49,7 +50,7 @@ numpy(): Converts the Matrix object to a NumPy array.
 
 """
 
-from typing import List,Tuple,Union
+from typing import List,Tuple,Union,Optional
 from matplotlib import pyplot as plt
 import networkx as netx
 import seaborn as sns
@@ -58,114 +59,111 @@ import json
 import csv
 import os
 
-version = "0.4.3"
+version = "0.5.0"
+__mem__ = {}
 
-def matrix(array_2d: List[List[Union[int,float]]]): return Matrix(array_2d)
 
-def zeros(dim: Tuple[int,int]):
-    if len(dim) == 2:
-        return Matrix([[0 for _ in range(dim[1])] for _ in range(dim[0])])
-    raise ValueError("dimension consist only number of rows and columns")
+def matrix(array_2d: List[List[Union[int,float]]],symbol: Optional[str] = None): return Matrix(array_2d,symbol)
 
-def null(dim: Tuple[int,int]):
-    if len(dim) == 2:
-        return Matrix([[0 for _ in range(dim[1])] for _ in range(dim[0])])
-    raise ValueError("dimension consist only number of rows and columns")
+def __fill(dim :Tuple[int,int],value: Union[int,float,bool],symbol: Optional[str] = None):
+    if len(dim) == 2: return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])],symbol = symbol)
+    raise ValueError("dimension must consist only number of rows and columns")
 
-def ones(dim: Tuple[int,int]):
-    if len(dim) == 2:
-        return Matrix([[1 for _ in range(dim[1])] for _ in range(dim[0])])
-    raise ValueError("dimension consist only number of rows and columns")
+def ones(dim: Tuple[int,int],symbol: Optional[str] = None): return __fill(dim,1,symbol)
 
-def fill(dim: Tuple[int,int],value: int|float|bool):
-    if len(dim) == 2:
-        return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])])
-    raise ValueError("dimension consist only number of rows and columns")
+def zeros(dim: Tuple[int,int],symbol: Optional[str] = None): return __fill(dim,0,symbol)    
 
-def ones_like(mat: "Matrix"): return ones((mat.row,mat.col))
+def null(dim: Tuple[int,int],symbol: Optional[str] = None): return __fill(dim,0,symbol)
 
-def zeros_like(mat: "Matrix"): return zeros((mat.row,mat.col))
+def fill(dim: Tuple[int,int],value: Union[int,float,bool],symbol: Optional[str] = None): return __fill(dim,value,symbol)
 
-def null_like(mat: "Matrix"): return null((mat.row,mat.col))
+def ones_like(mat: "Matrix",symbol: Optional[str] =  None): return ones((mat.row,mat.col),symbol)
 
-def rand_like(mat: "Matrix",seed: None|int = None): return rand((mat.row,mat.col),seed)
+def zeros_like(mat: "Matrix",symbol: Optional[str] = None): return zeros((mat.row,mat.col),symbol)
 
-def fill_like(mat: "Matrix",value: int|float|bool): return fill((mat.row,mat.col),value)
+def null_like(mat: "Matrix",symbol: Optional[str] = None): return null((mat.row,mat.col),symbol)
 
-def identity(N: int):
+def rand_like(mat: "Matrix",seed: Optional[int] = None,symbol: Optional[str] = None): return rand((mat.row,mat.col),seed,symbol)
+
+def fill_like(mat: "Matrix",value: Union[int,float,bool],symbol: Optional[str] = None): return fill((mat.row,mat.col),value,symbol)
+
+def identity(N: int,symbol: Optional[str] = None):
     new_mat = []
     for x in range(N):
         buffer = []
         for y in range(N):
-            if x == y:
-                buffer.append(1)
-            else:
-                buffer.append(0)
+            if x == y: buffer.append(1)
+            else: buffer.append(0)
         new_mat.append(buffer)
-    return Matrix(new_mat)
+    return Matrix(new_mat,symbol)
 
-def diagonal(value: int|float,N: int):
+def diagonal(value: int|float,N: int,symbol: Optional[str] = None):
     new_mat = []
     for row in range(N):
         buffer = []
         for x in range(N):
-            if row == x:
-                buffer.append(value)
-            else:
-                buffer.append(0)
+            if row == x: buffer.append(value)
+            else: buffer.append(0)
         new_mat.append(buffer)
-    return Matrix(new_mat)
+    return Matrix(new_mat,symbol)
 
-def rand(dim: Tuple[int,int],seed :None|int = None):
+def rand(dim: Tuple[int,int],seed: None|int = None,symbol: Optional[str] = None):
     new_mat = []
-    if seed is not None:
-        np.random.seed(seed)
+    if seed is not None: np.random.seed(seed)
     for _ in range(dim[0]):
         buffer = []
-        for _ in range(dim[1]):
-            buffer.append(np.random.rand())
+        for _ in range(dim[1]): buffer.append(np.random.rand())
         new_mat.append(buffer)
-    return Matrix(new_mat)
+    return Matrix(new_mat,symbol)
 
-def read_csv(filename: str):
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
+def read_csv(filename: str,symbol: Optional[str]):
+    if not os.path.exists(filename): raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
     with open(filename,"r") as file:
         reader = csv.reader(file)
         data = [list(map(float,row)) for row in reader]
-    return Matrix(data)
+    return Matrix(data,symbol)
 
-def read_json(filename: str):
-    if not os.path.exists(filename):
-        raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
+def read_json(filename: str,symbol: Optional[str] = None):
+    if not os.path.exists(filename): raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
     new_mat = []
     with open(filename,"r") as file:
         data = json.load(file)
         for x in range(len(data.keys())):
             new_mat.append(data[f"{x}"])
-    return Matrix(new_mat)
+    return Matrix(new_mat,symbol)
+
+def mem():
+    string = "\n"
+    keys = __mem__.keys()
+    for x in keys: string += f"{x} = {__mem__[x]}\n"
+    return string
+
+def from_symbol(symbol):
+    return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self,array_2d):
-        if not self.__check__(array_2d):
-            raise ValueError("specify a 2D array with an equal number of elements in each row")
+    def __init__(self,array_2d: List[List[Union[int,float]]],symbol: Optional[str] = None):
+        self.__check__(array_2d,symbol)
         self.__matrix = array_2d
+        self.__symbol = symbol
         self.__row = len(array_2d)
         self.__col = len(array_2d[0])
         self.__size = self.__row * self.__col
         self.__shape = self.__row,self.__col
         self.__iter_index = 0
+        if self.__symbol: __mem__[self.__symbol] = self
 
-    def __check__(self,array_2d):
+    def __check__(self,array_2d,symbol):
         num_elements_in_first_row = len(array_2d[0])
         for i, row in enumerate(array_2d):
-            if len(row) != num_elements_in_first_row:
-                raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
+            if len(row) != num_elements_in_first_row: raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
             for element in row:
-                if not isinstance(element,(int,float,bool)):
-                    raise TypeError(f"element {element} in row {i+1} is not an int or float")
-        return True
+                if not isinstance(element,(int,float,bool)): raise TypeError(f"element {element} in row {i+1} is not an int or float")
+        if not isinstance(symbol,Union[None,str]): raise ValueError(f"symbol must be a string not '{type(symbol).__name__}'")
+        if symbol is not None:
+            if not isinstance(symbol,str): raise ValueError(f"symbol must be a string or None, not '{type(symbol).__name__}'")
+            if symbol in __mem__: raise KeyError("'{symbol}' already exists! try with different symbol")
 
     def __iter__(self):
         self.__iter_index = 0
@@ -177,14 +175,30 @@ class Matrix:
             col = self.__iter_index % self.__col
             self.__iter_index += 1
             return self.__matrix[row][col]
-        else:
-            raise StopIteration
+        else: raise StopIteration
 
-    def __repr__(self):
-        return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape}"
+    def __repr__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
 
     def __del__(self):
-        del self
+        if hasattr(self,"__symbol") and self.__symbol: del __mem__[self.__symbol]
+
+    def assign_symbol(self,new_symbol):
+        if self.__symbol is not None: return self.update_symbol(new_symbol)
+        else:
+            self.__symbol = new_symbol
+            __mem__[self.__symbol] = self
+
+    def update_symbol(self,new_symbol):
+        if self.__symbol is None: return self.assign_symbol(new_symbol)
+        else:
+            del __mem__[self.__symbol]
+            self.__symbol = new_symbol
+            __mem__[self.__symbol] = self
+
+    def remove_symbol(self):
+        if self.__symbol is not None:
+            del __mem__[self.__symbol]
+            self.__symbol = None
 
     def __getitem__(self,indices):
         if isinstance(indices,tuple):
@@ -197,19 +211,14 @@ class Matrix:
     def __setitem__(self,indices,value):
         if isinstance(indices,tuple):
             row,col = indices
-            if isinstance(value,(int,float)):
-                self.__matrix[row][col] = value
-            else:
-                raise TypeError("expected value to be an int or float")
+            if isinstance(value,(int,float)): self.__matrix[row][col] = value
+            else: raise TypeError("expected value to be an int or float")
         else:
             row = indices
             if isinstance(value,list):
-                if len(value) == self.__col:
-                    self.__matrix[row] = value
-                else:
-                    raise ValueError("number of elements in the row must be equal to the number of columns")
-            else:
-                raise TypeError("expected value to be a list")
+                if len(value) == self.__col: self.__matrix[row] = value
+                else: raise ValueError("number of elements in the row must be equal to the number of columns")
+            else: raise TypeError("expected value to be a list")
 
     @property
     def row(self): return self.__row
@@ -224,14 +233,16 @@ class Matrix:
     def size(self): return self.__size
 
     @property
+    def symbol(self): return self.__symbol
+
+    @property
     def T(self):
         t = [[self.__matrix[j][i] for j in range(self.__row)] for i in range(self.__col)]
         return Matrix(t)
 
     @classmethod
-    def from_numpy(cls,array):
-        if isinstance(array,np.ndarray):
-            return cls(array.tolist())
+    def from_numpy(cls,array,symbol: Optional[str] = None):
+        if isinstance(array,np.ndarray): return cls(array.tolist(),symbol)
         raise TypeError("input should be a numpy array")
 
     def numpy(self): return np.array(self.__matrix)
@@ -241,8 +252,7 @@ class Matrix:
             new_mat = []
             for row in self.__matrix:
                 buffer = []
-                for x in row:
-                    buffer.append(x + other)
+                for x in row: buffer.append(x + other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
@@ -251,8 +261,7 @@ class Matrix:
                 raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] + other.__matrix[row][x])
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] + other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for +: `{type(other).__name__}` and `Matrix`")
@@ -262,8 +271,7 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other + self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other + self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for +: `{type(other).__name__}` and `Matrix`")
@@ -273,8 +281,7 @@ class Matrix:
                 new_mat = []
                 for row in self.__matrix:
                     buffer = []
-                    for x in row:
-                        buffer.append(x - other)
+                    for x in row: buffer.append(x - other)
                     new_mat.append(buffer)
                 return Matrix(new_mat)
             elif isinstance(other,Matrix):
@@ -283,8 +290,7 @@ class Matrix:
                     raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
                 for row in range(self.__row):
                     buffer = []
-                    for x in range(self.__col):
-                        buffer.append(self.__matrix[row][x] - other.__matrix[row][x])
+                    for x in range(self.__col): buffer.append(self.__matrix[row][x] - other.__matrix[row][x])
                     new_mat.append(buffer)
                 return Matrix(new_mat)
             raise TypeError(f"unsupported operand type for -: `{type(other).__name__}` and `Matrix`")
@@ -294,8 +300,7 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other - self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other - self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupoorted operand type for -: `{type(other).__name__}` and `Matrix`")
@@ -305,18 +310,15 @@ class Matrix:
             new_mat = []
             for row in self.__matrix:
                 buffer = []
-                for x in row:
-                    buffer.append(x * other)
+                for x in row: buffer.append(x * other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
             new_mat = []
-            if self.__shape != other.__shape:
-                raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
+            if self.__shape != other.__shape: raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] * other.__matrix[row][x])
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] * other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for *: `{type(other).__name__}` and `Matrix`")
@@ -326,22 +328,18 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other * self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other * self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for *: `{type(other).__name__}` and `Matrix`")
 
     def __matmul__(self,other):
-        if not isinstance(other,Matrix):
-            raise TypeError(f"multiplication is only supported between two matrices, not between a matrix and {type(other).__name__}")
-        if self.__col != other.__row:
-            raise ValueError(f"number of columns in the first matrix must be equal to the number of rows in the second matrix for multiplication")
+        if not isinstance(other,Matrix): raise TypeError(f"multiplication is only supported between two matrices, not between a matrix and {type(other).__name__}")
+        if self.__col != other.__row: raise ValueError(f"number of columns in the first matrix must be equal to the number of rows in the second matrix for multiplication")
         result_matrix = [[0 for _ in range(other.__col)] for _ in range(self.__row)]
         for i in range(self.__row):
             for j in range(other.__col):
-                for k in range(self.__col):
-                    result_matrix[i][j] += self.__matrix[i][k] * other.__matrix[k][j]
+                for k in range(self.__col): result_matrix[i][j] += self.__matrix[i][k] * other.__matrix[k][j]
         return Matrix(result_matrix)
 
     def __truediv__(self,other):
@@ -349,30 +347,25 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] / other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] / other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError(f"shape of the matrices must be the same")
+            if self.__shape != other.__shape: raise ValueError(f"shape of the matrices must be the same")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] / other.__matrix[row][x])
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] / other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for /: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for /: `{type(other).__name__}` and `Matrix`")
 
     def __rtruediv__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other / self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other / self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for /: `{type(other).__name__}` and `Matrix`")
@@ -382,30 +375,25 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] // other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] // other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError(f"shape of the matrices must be the same")
+            if self.__shape != other.__shape: raise ValueError(f"shape of the matrices must be the same")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] // other.__matrix[row][x])
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] // other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for //: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for //: `{type(other).__name__}` and `Matrix`")
 
     def __rfloordiv__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other // self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other // self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for //: `{type(other).__name__}` and `Matrix`")
@@ -415,28 +403,24 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] ** other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] ** other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(buffer)
+                for x in range(self.__col): buffer.append(buffer)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for **: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for **: `{type(other).__name__}` and `Matrix`")
 
     def __rpow__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other ** self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other ** self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for **: `{type(other).__name__}` and `Matrix`")
@@ -446,8 +430,7 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] % other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] % other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
@@ -455,22 +438,18 @@ class Matrix:
                 new_mat = []
                 for row in range(self.__row):
                     buffer = []
-                    for x in range(self.__col):
-                        buffer.append(self.__matrix[row][x] % other.__matrix[row][x])
+                    for x in range(self.__col): buffer.append(self.__matrix[row][x] % other.__matrix[row][x])
                     new_mat.append(buffer)
                 return Matrix(new_mat)
-            else:
-                raise ValueError("shape of the matrices must be equal")
-        else:
-            raise TypeError(f"unsupported operand type for %: `{type(other).__name__}` and `Matrix`")
+            else: raise ValueError("shape of the matrices must be equal")
+        else: raise TypeError(f"unsupported operand type for %: `{type(other).__name__}` and `Matrix`")
 
     def __rmod__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other % self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other % self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for %: `{type(other).__name__}` and `Matrix`")
@@ -491,13 +470,11 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] & other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] & other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("shape of the matrices must be equal")
+            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
@@ -505,16 +482,14 @@ class Matrix:
                     buffer.append(self.__matrix[row][x] & other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for &: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for &: `{type(other).__name__}` and `Matrix`")
         
     def __rand__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other & self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other & self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for &: `{type(other).__name__}` and `Matrix`")
@@ -524,23 +499,19 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] | other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] | other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("shape of the matrices must be equal")
-        else:
-            raise TypeError(f"unsupported operand type for |: {type(other).__name__}` and `Matrix`")
+            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
+        else: raise TypeError(f"unsupported operand type for |: {type(other).__name__}` and `Matrix`")
 
     def __ror__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other | self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other | self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for |: `{type(other).__name__}` and `Matrix`")
@@ -549,8 +520,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(~self.__matrix[row][x])
+            for x in range(self.__col): buffer.append(~self.__matrix[row][x])
             new_mat.append(buffer)
         return Matrix(new_mat)
 
@@ -559,30 +529,25 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] ^ other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] ^ other)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("shape of the matrices must be equal")
+            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] ^ other.__matrix[row][x])
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] ^ other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
 
     def __rxor__(self,other):
         if isinstance(other,(int,float)):
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(other ^ self.__matrix[row][x])
+                for x in range(self.__col): buffer.append(other ^ self.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
@@ -593,27 +558,21 @@ class Matrix:
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] == other:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] == other: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] == other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] == other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for ==: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for ==: `{type(other).__name__}` and `Matrix`")
 
     def __ne__(self,other):
         if isinstance(other,(int,float)):
@@ -621,27 +580,21 @@ class Matrix:
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] != other:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] != other: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] != other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] != other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for !=: {type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for !=: {type(other).__name__}` and `Matrix`")
         
     def __lt__(self,other):
         if isinstance(other,(int,float)):
@@ -649,27 +602,21 @@ class Matrix:
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] < other:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] < other: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] < other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] < other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for <: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for <: `{type(other).__name__}` and `Matrix`")
         
     def __gt__(self,other):
         if isinstance(other,(int,float)):
@@ -677,27 +624,21 @@ class Matrix:
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] > other:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] > other: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] > other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] > other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for >:`{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for >:`{type(other).__name__}` and `Matrix`")
 
     def __le__(self,other):
         if isinstance(other,(int,float)):
@@ -705,27 +646,21 @@ class Matrix:
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] <= other:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] <= other: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] <= other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] <= other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for <=: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for <=: `{type(other).__name__}` and `Matrix`")
 
     def __ge__(self,other):
         if isinstance(other,(int,float)):
@@ -740,20 +675,16 @@ class Matrix:
                 new_mat.append(buffer)
             return Matrix(new_mat)
         elif isinstance(other,Matrix):
-            if self.__shape != other.__shape:
-                raise ValueError("can't compare two matrices with different shapes")
+            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col):
-                    if self.__matrix[row][x] >= other.__matrix[row][x]:
-                        buffer.append(True)
-                    else:
-                        buffer.append(False)
+                    if self.__matrix[row][x] >= other.__matrix[row][x]: buffer.append(True)
+                    else: buffer.append(False)
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise TypeError(f"unsupported operand type for >=: `{type(other).__name__}` and `Matrix`")
+        else: raise TypeError(f"unsupported operand type for >=: `{type(other).__name__}` and `Matrix`")
 
     def reciprocate(self):
         new_mat = []
@@ -774,10 +705,8 @@ class Matrix:
         return True
 
     def mat_pow(self,n: int):
-        if not isinstance(n,int):
-            raise TypeError(f"given base must be an integer not `{type(n).__name__}`")
-        elif n < 0:
-            raise ValueError("`n` must be greater than 0")
+        if not isinstance(n,int): raise TypeError(f"given base must be an integer not `{type(n).__name__}`")
+        elif n < 0: raise ValueError("`n` must be greater than 0")
         result = Matrix([[1 if i == j else 0 for j in range(self.__col)] for i in range(self.__row)])
         base = self
         while n > 0:
@@ -864,35 +793,27 @@ class Matrix:
                 self.__matrix[row] = value
                 return
             raise TypeError(f"can't set `{type(value).__name__}` to matrix row")
-        else:
-            self.__matrix[row][col] = value
+        else: self.__matrix[row][col] = value
 
-    def concate(self,other,axis = 0):
+    def concate(self,other,axis = 0,symbol: Optional[str] = None):
         if isinstance(other, Matrix):
             if axis == 0:
-                if self.__col != other.__col:
-                    raise ValueError("Matrices must have the same number of columns to concatenate vertically")
+                if self.__col != other.__col: raise ValueError("Matrices must have the same number of columns to concatenate vertically")
                 new_matrix = self.__matrix + other.__matrix
             elif axis == 1:
-                if self.__row != other.__row:
-                    raise ValueError("Matrices must have the same number of rows to concatenate horizontally")
+                if self.__row != other.__row: raise ValueError("Matrices must have the same number of rows to concatenate horizontally")
                 new_matrix = [self.__matrix[row] + other.__matrix[row] for row in range(self.__row)]
-            else:
-                raise ValueError("Axis must be 0 (vertical) or 1 (horizontal)")
+            else: raise ValueError("Axis must be 0 (vertical) or 1 (horizontal)")
         elif isinstance(other, list):
             if axis == 0:
-                if len(other) != self.__col:
-                    raise ValueError("The list must have the same number of elements as there are columns in the matrix to concatenate vertically")
+                if len(other) != self.__col: raise ValueError("The list must have the same number of elements as there are columns in the matrix to concatenate vertically")
                 new_matrix = self.__matrix + [other]
             elif axis == 1:
-                if len(other) != self.__row:
-                    raise ValueError("the list must have the same number of elements as there are rows in the matrix to concatenate horizontally")
+                if len(other) != self.__row: raise ValueError("the list must have the same number of elements as there are rows in the matrix to concatenate horizontally")
                 new_matrix = [self.__matrix[row] + [other[row]] for row in range(self.__row)]
-            else:
-                raise ValueError("axis must be 0 (vertical) or 1 (horizontal)")
-        else:
-            raise TypeError(f"couldn't add `{type(other).__name__}` and `Matrix`, other must be `list` or `Matrix`")
-        return Matrix(new_matrix)
+            else: raise ValueError("axis must be 0 (vertical) or 1 (horizontal)")
+        else: raise TypeError(f"couldn't add `{type(other).__name__}` and `Matrix`, other must be `list` or `Matrix`")
+        return Matrix(new_matrix,symbol)
 
     def to_json(self,file_path: str):
         if os.path.exists(file_path):
@@ -913,23 +834,19 @@ class Matrix:
         with open(file_path,"w") as file:
             for row in range(self.__row):
                 for x in range(self.__col):
-                    if x == self.__col - 1:
-                        file.write(f"{self.__matrix[row][x]}")
-                    else:
-                        file.write(f"{self.__matrix[row][x]},")
+                    if x == self.__col - 1: file.write(f"{self.__matrix[row][x]}")
+                    else: file.write(f"{self.__matrix[row][x]},")
                 file.write("\n")
             file.close()
 
     def to_dict(self):
         result = {}
-        for row in range(self.__row):
-            result[f"{row}"] = self.__matrix[row]
+        for row in range(self.__row): result[f"{row}"] = self.__matrix[row]
         return result
 
-    def to_list(self):
-        return self.__matrix
+    def to_list(self): return self.__matrix
 
-    def mean(self,axis = 1):
+    def mean(self,axis = 1,symbol: Optional[str] = None):
         if axis == 1:
             new_mat = []
             for row in range(self.__row):
@@ -937,7 +854,7 @@ class Matrix:
                 for x in range(self.__col):
                     total += self.__matrix[row][x]
                 new_mat.append([total / self.__col])
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         elif axis == 0:
             new_mat = []
             for x in range(self.__col):
@@ -945,11 +862,11 @@ class Matrix:
                 for row in range(self.__row):
                     total += self.__matrix[row][x]
                 new_mat.append([total / self.__row])
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         else:
             raise ValueError("invalid axis given!")
 
-    def var(self,axis = 1):
+    def var(self,axis = 1,symbol: Optional[str] = None):
         if axis == 1:
             new_mat = []
             for row in range(self.__row):
@@ -957,7 +874,7 @@ class Matrix:
                 for x in range(self.__col):
                     total += (self.__matrix[row][x] - self.mean(axis = 1)) ** 2.0
                 new_mat.append([total / self.__col])
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         elif axis == 0:
             new_mat = []
             for x in range(self.__col):
@@ -965,13 +882,13 @@ class Matrix:
                 for row in range(self.__row):
                     total += (self.__matrix[row][x] - self.mean(axis = 0)) ** 2.0
                 new_mat.append([total / self.__row])
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         else:
             raise ValueError("invalid axis given!")
 
-    def std(self,axis = 1): return Matrix(self.var(axis = axis).sqrt())
+    def std(self,axis = 1,symbol: Optional[str] = None): return Matrix(self.var(axis = axis).sqrt(),symbol)
 
-    def median(self,axis = 1):
+    def median(self,axis = 1,symbol: Optional[str] = None):
         if axis == 1:
             new_mat = []
             for row in range(self.__row):
@@ -982,7 +899,7 @@ class Matrix:
                 else:
                     median_value = sorted_row[mid]
                 new_mat.append([median_value])
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         elif axis == 0:
             new_mat = []
             for x in range(self.__col):
@@ -994,7 +911,7 @@ class Matrix:
                 else:
                     median_value = sorted_col[mid]
                 new_mat.append(median_value)
-            return Matrix([new_mat])
+            return Matrix([new_mat],symbol)
         else:
             raise ValueError("invalid axis given!")
 
@@ -1054,53 +971,50 @@ class Matrix:
         else:
             raise ValueError("invalid argument for axis it can either be None, 0 or 1")
     
-    def sort(self,axis = 1):
+    def sort(self,axis = 1,symbol: Optional[str] = None):
         if axis == 1:
             new_mat = [sorted(row) for row in self.__matrix]
-            return Matrix(new_mat)
+            return Matrix(new_mat,symbol)
         elif axis == 0:
             new_mat = [[self.__matrix[row][col] for row in range(self.__row)] for col in range(self.__col)]
             sorted_mat = [sorted(col) for col in new_mat]
             transposed_sorted_mat = [[sorted_mat[col][row] for col in range(self.__col)] for row in range(self.__row)]
-            return Matrix(transposed_sorted_mat)
+            return Matrix(transposed_sorted_mat,symbol)
         else:
             raise ValueError("invalid axis given!")
 
-    def sqrt(self):
+    def sqrt(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(self.__matrix[row][x] ** 0.5)
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def cbrt(self):
+    def cbrt(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(self.__matrix[row][x] ** (1/3))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def floor(self):
+    def floor(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 number = self[row][x]
-                if number >= 0:
-                    buffer.append(int(number))
+                if number >= 0: buffer.append(int(number))
                 else:
-                    if int(number) == number:
-                        buffer.append(number)
-                    else:
-                        buffer.append(int(number) - 1)
+                    if int(number) == number: buffer.append(number)
+                    else: buffer.append(int(number) - 1)
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def ceil(self):
+    def ceil(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
@@ -1111,169 +1025,155 @@ class Matrix:
                 else:
                     buffer.append(int(number) + 1 if number > 0 else int(number))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def scale(self,scalar):
+    def scale(self,scalar,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(self.__matrix[row][x] * scalar)
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def log(self):
+    def log(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(np.log10(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def ln(self):
+    def ln(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(np.log(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def sin(self):
+    def sin(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(np.sin(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def cos(self):
+    def cos(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def tan(self):
+    def tan(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(np.tan(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def sec(self):
+    def sec(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(1 / np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def cosec(self):
+    def cosec(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(1 / np.sin(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def cot(self):
+    def cot(self,symbol: Optional[str] = None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col):
                 buffer.append(1 / np.tan(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat,symbol)
 
-    def exp(self):
+    def exp(self,symbol: Optional[str] = None):
         E = 2.7182818284590452353602874713527
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(E ** self.__matrix[row][x])
+            for x in range(self.__col): buffer.append(E ** self.__matrix[row][x])
             new_mat.append(buffer)
         return Matrix(new_mat)
 
-    def eigen(self):
-        if not self.is_square():
-            raise ValueError("eigen values and its vectors are defined only for square matrices")
+    def eigen(self,symbol: Optional[str] = None):
+        if not self.is_square(): raise ValueError("eigen values and its vectors are defined only for square matrices")
         value,vec = np.linalg.eig(self.numpy())
-        return value,Matrix(vec.tolist())
+        return value,Matrix(vec.tolist(),symbol)
 
-    def cofactor(self,i,j):
+    def cofactor(self,i,j,symbol: Optional[str] = None):
         sub_matrix = [row[:j] + row[j + 1:] for row in (self.__matrix[:i] + self.__matrix[i + 1:])]
         sign = (-1) ** (i + j)
-        return sign * Matrix(sub_matrix).det()
+        return sign * Matrix(sub_matrix,symbol).det()
 
     def row_matrix(self): return self.__col == 1
 
     def column_matrix(self): return self.__row == 1
     
-    def minor(self,i,j):
+    def minor(self,i,j,symbol: Optional[str] = None):
         sub_matrix = [row[:j] + row[j+1:] for row in (self.__matrix[:i] + self.__matrix[i+1:])]
-        return Matrix(sub_matrix).det()
+        return Matrix(sub_matrix,symbol).det()
 
     def det(self):
-        if not self.is_square():
-            raise ValueError("determinant is defined only for square matrices")
-        if self.__row == 1:
-            return self.__matrix[0][0]
-        if self.__row == 2:
-            return self.__matrix[0][0] * self.__matrix[1][1] - self.__matrix[0][1] * self.__matrix[1][0]
+        if not self.is_square(): raise ValueError("determinant is defined only for square matrices")
+        if self.__row == 1: return self.__matrix[0][0]
+        if self.__row == 2: return self.__matrix[0][0] * self.__matrix[1][1] - self.__matrix[0][1] * self.__matrix[1][0]
         det = 0
-        for j in range(self.__col):
-            det += self.__matrix[0][j] * self.cofactor(0,j)
+        for j in range(self.__col): det += self.__matrix[0][j] * self.cofactor(0,j)
         return det
 
     def inverse(self):
         det = self.det()
-        if det == 0:
-            raise ZeroDivisionError(f"inverse of a matrix with 'zero' determinant doesn't exist!")
+        if det == 0: raise ZeroDivisionError(f"inverse of a matrix with 'zero' determinant doesn't exist!")
         return self.adjoint().scale(1/det)
     
     def is_invertible(self):
-        if not self.is_square():
-            raise ValueError("matrix must have equal number of rows and columns")
+        if not self.is_square(): raise ValueError("matrix must have equal number of rows and columns")
         return self.det() != 0
 
     def is_symmetric(self):
-        if self.__row != self.__col:
-            return False
+        if self.__row != self.__col: return False
         for row in range(self.__row):
             for x in range(self.__col):
-                if self.__matrix[row][x] != self.__matrix[x][row]:
-                    return False
+                if self.__matrix[row][x] != self.__matrix[x][row]: return False
         return True
 
     def is_skew_symmetric(self):
-        if self.__row != self.__col:
-            return False
+        if self.__row != self.__col: return False
         for i in range(self.__row):
             for j in range(self.__col):
-                if self.__matrix[i][j] != -self.__matrix[j][i]:
-                    return False
+                if self.__matrix[i][j] != -self.__matrix[j][i]: return False
         return True
 
     def is_singular(self):
-        if not self.is_square():
-            raise ValueError("matrix must have equal number of rows and columns")
+        if not self.is_square(): raise ValueError("matrix must have equal number of rows and columns")
         return self.det() == 0
 
-    def adjoint(self):
-        if not self.is_square():
-            raise ValueError("adjoint is defined only for square matrices")
-        cofactors = [[self.cofactor(i, j) for j in range(self.__col)] for i in range(self.__row)]
-        return Matrix(cofactors).T
+    def adjoint(self,symbol: Optional[str] = None):
+        if not self.is_square(): raise ValueError("adjoint is defined only for square matrices")
+        cofactors = [[self.cofactor(i,j) for j in range(self.__col)] for i in range(self.__row)]
+        return Matrix(cofactors,symbol).T
 
     def is_square(self): return self.__row == self.__col
 
@@ -1288,26 +1188,23 @@ class Matrix:
 
     def transpose(self): return self.T
 
-    def flatten(self):
+    def flatten(self,symbol: Optional[str]):
         flattened = [item for row in self.__matrix for item in row]
         return Matrix([flattened])
 
-    def reshape(self,dim):
+    def reshape(self,dim,symbol: Optional[str]):
         total_elements = self.__row * self.__col
-        if total_elements != dim[0] * dim[1]:
-            raise ValueError(f"cannot reshape array of size {total_elements} into shape {dim}")
+        if total_elements != dim[0] * dim[1]: raise ValueError(f"cannot reshape array of size {total_elements} into shape {dim}")
         flattened = self.flatten().__matrix[0]
         reshaped = []
         for i in range(dim[0]):
             row = []
-            for j in range(dim[1]):
-                row.append(flattened[i * dim[1] + j])
+            for j in range(dim[1]): row.append(flattened[i * dim[1] + j])
             reshaped.append(row)
-        return Matrix(reshaped)
+        return Matrix(reshaped,symbol)
 
     def lu_decomposition(self):
-        if not self.is_square():
-            raise ValueError("LU decomposition is only defined for square matrices")
+        if not self.is_square(): raise ValueError("LU decomposition is only defined for square matrices")
         n = self.__row
         L = zeros((n,n))
         U = zeros((n,n))
@@ -1322,17 +1219,14 @@ class Matrix:
     def sum(self,keepdim = False):
         if keepdim:
             new_mat = []
-            for row in self.__matrix:
-                new_mat.append([sum(row)])
+            for row in self.__matrix: new_mat.append([sum(row)])
             return Matrix(new_mat)
         elif not keepdim:
             total = 0
             for row in self.__matrix:
-                for x in row:
-                    total += x
+                for x in row: total += x
             return total
-        else:
-            raise ValueError("invalid argument")
+        else: raise ValueError("invalid argument")
 
     def frobenius_norm(self):
         sum_of_sqrs = sum(x**2 for row in self.__matrix for x in row)
@@ -1346,21 +1240,17 @@ class Matrix:
         row_sums = [sum(abs(x) for x in row) for row in self.__matrix]
         return max(row_sums)
 
-    def cholesky(self):
-        if self.__row != self.__col:
-            raise ValueError("Matrix must be square for Cholesky decomposition")
+    def cholesky(self,symbol: Optional[str] = None):
+        if self.__row != self.__col: raise ValueError("Matrix must be square for Cholesky decomposition")
         dense = np.array(self.__matrix)
-        if not np.allclose(dense, dense.T):
-            raise ValueError("Matrix must be symmetric for Cholesky decomposition")
+        if not np.allclose(dense,dense.T): raise ValueError("Matrix must be symmetric for Cholesky decomposition")
         L = np.zeros_like(dense)
         for i in range(self.__row):
             for j in range(i + 1):
                 sum_k = sum(L[i][k] * L[j][k] for k in range(j))
-                if i == j:
-                    L[i][j] = np.sqrt(dense[i][i] - sum_k)
-                else:
-                    L[i][j] = (dense[i][j] - sum_k) / L[j][j]
-        return Matrix(L.tolist())
+                if i == j: L[i][j] = np.sqrt(dense[i][i] - sum_k)
+                else: L[i][j] = (dense[i][j] - sum_k) / L[j][j]
+        return Matrix(L.tolist(),symbol)
 
     def rank(self):
         mat = self.__matrix.copy()
@@ -1376,8 +1266,7 @@ class Matrix:
                 rank += 1
                 for j in range(i + 1,self.__row):
                     factor = mat[j][i] / mat[i][i]
-                    for k in range(i,self.__col):
-                        mat[j][k] -= factor * mat[i][k]
+                    for k in range(i,self.__col): mat[j][k] -= factor * mat[i][k]
         return rank
 
     def heatmap(self,title = "Matrix HeatMap",cmap = "viridis"):
@@ -1392,8 +1281,7 @@ class Matrix:
         G = netx.Graph()
         for row in range(self.__row):
             for x in range(self.__col):
-                if self.__matrix[row][x] != 0:
-                    G.add_edge(row,x,weight = self.__matrix[row][x])
+                if self.__matrix[row][x] != 0: G.add_edge(row,x,weight = self.__matrix[row][x])
         pos = netx.spring_layout(G)
         edge_labels = netx.get_edge_attributes(G,"weight")
         plt.figure(figsize = (8,6))
