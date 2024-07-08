@@ -3,7 +3,7 @@ from setuptools import setup,find_packages
 
 setup(
     name = "matrix",
-    version = "0.4.3",
+    version = "0.5.0",
     author = "Sahil Rajwar",
     description = "python library for doing calculations with matrices",
     long_description = open("README.md","r",encoding = "utf-8").read(),
@@ -11,7 +11,7 @@ setup(
     license = "MIT",
     url = "https://github.com/Sahil-Rajwar-2004/matrix.py",
     packages = find_packages(),
-    install_requires = ["numpy","matplotlib","seaborn"],
+    install_requires = ["numpy","matplotlib","seaborn","networkx"],
     classifiers = [
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License",
