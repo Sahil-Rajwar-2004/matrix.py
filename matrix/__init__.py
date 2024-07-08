@@ -133,7 +133,7 @@ def read_json(filename: str,symbol: Optional[str] = None):
     return Matrix(new_mat,symbol)
 
 def mem():
-    string = "\n"
+    string = ""
     keys = __mem__.keys()
     for x in keys: string += f"{x} = {__mem__[x]}\n"
     return string
@@ -163,7 +163,7 @@ class Matrix:
         if not isinstance(symbol,Union[None,str]): raise ValueError(f"symbol must be a string not '{type(symbol).__name__}'")
         if symbol is not None:
             if not isinstance(symbol,str): raise ValueError(f"symbol must be a string or None, not '{type(symbol).__name__}'")
-            if symbol in __mem__: raise KeyError("'{symbol}' already exists! try with different symbol")
+            if symbol in __mem__: raise KeyError(f"'{symbol}' already exists! try with different symbol")
 
     def __iter__(self):
         self.__iter_index = 0
@@ -183,10 +183,11 @@ class Matrix:
         if hasattr(self,"__symbol") and self.__symbol: del __mem__[self.__symbol]
 
     def assign_symbol(self,new_symbol):
-        if self.__symbol is not None: return self.update_symbol(new_symbol)
-        else:
+        if self.__symbol is None and new_symbol not in __mem__.keys():
             self.__symbol = new_symbol
             __mem__[self.__symbol] = self
+        else: raise ValueError(f"'{new_symbol}' already exists! try to use different symbol")
+        return self.update_symbol(new_symbol)
 
     def update_symbol(self,new_symbol):
         if self.__symbol is None: return self.assign_symbol(new_symbol)
