@@ -9,7 +9,7 @@ if ($LASTEXITCODE -eq 0) {
         Write-Host "Exiting without reinstalling"
         exit 0
     }
-    Write-Host "Uninstalling ($pkg)....."
+    Write-Host "Uninstalling ($pkg)..."
     pip uninstall $pkg -y
 } else {
     Write-Host "$pkg isn't installed yet"
