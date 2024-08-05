@@ -6,7 +6,13 @@ pip show "$pkg" > /dev/null 2>&1
 
 if [ $? -eq 0 ]; then
     echo "$pkg lib is already installed"
-    exit 0
+    read -p "do you want to uninstall it and reinstall? (y/n): " choice
+    if [ "$choice" != "y" ]; then
+        echo "exiting without reinstalling!"
+        exit 0
+    fi
+    echo "Uninstalling ($pkg)....."
+    pip uninstall "$pkg" -y
 else
     echo "$pkg lib isn't installed yet"
 fi

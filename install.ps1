@@ -4,7 +4,13 @@ pip show $pkg > $null 2>&1
 
 if ($LASTEXITCODE -eq 0) {
     Write-Host "$pkg lib is already installed"
-    exit 0
+    $choice = Read-Host "do you want to uninstall it and reinstall? (y/n)"
+    if ($choice -ne "y"){
+        Write-Host "Exiting without reinstalling"
+        exit 0
+    }
+    Write-Host "Uninstalling ($pkg)....."
+    pip uninstall $pkg -y
 } else {
     Write-Host "$pkg isn't installed yet"
 }
