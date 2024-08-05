@@ -59,7 +59,7 @@ import json
 import csv
 import os
 
-version = "0.5.0"
+version = "0.5.1"
 __mem__ = {}
 
 
@@ -552,6 +552,60 @@ class Matrix:
                 new_mat.append(buffer)
             return Matrix(new_mat)
         raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
+    
+    def __lshift__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] << other)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] << other.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        raise TypeError(f"unsupported operand type for <<: `{type(other).__name__}` and `Matrix`")
+    
+    def __rlshift__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(other << self.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        raise TypeError(f"unsupported operand type for <<: `{type(other).__name__}` and `Matrix`")
+
+    def __rshift__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] >> other)
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        elif isinstance(other,Matrix):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] >>  other.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        raise TypeError(f"unsupported operand type for >>: `{type(other).__name__}` and `Matrix`")
+    
+    def __rrshift__(self,other):
+        if isinstance(other,(int,float)):
+            new_mat = []
+            for row in range(self.__row):
+                buffer = []
+                for x in range(self.__col): buffer.append(other >> self.__matrix[row][x])
+                new_mat.append(buffer)
+            return Matrix(new_mat)
+        raise TypeError(f"unsupported operand type for >>: `{type(other).__name__}` and `Matrix`")
 
     def __eq__(self,other):
         if isinstance(other,(int,float)):
