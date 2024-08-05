@@ -11,7 +11,7 @@ if [ $? -eq 0 ]; then
         echo "exiting without reinstalling!"
         exit 0
     fi
-    echo "Uninstalling ($pkg)....."
+    echo "Uninstalling ($pkg)..."
     pip uninstall "$pkg" -y
 else
     echo "$pkg lib isn't installed yet"
