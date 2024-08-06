@@ -1,5 +1,2 @@
 __pycache__
-dist
-build
-matrix.egg-info
 .ipynb_checkpoints/
