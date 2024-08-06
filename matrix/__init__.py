@@ -59,7 +59,7 @@ import json
 import csv
 import os
 
-version = "0.5.1"
+version = "0.5.2"
 __mem__ = {}
 
 
@@ -817,6 +817,58 @@ class Matrix:
 
     def le(self,other): return self <= other
 
+    def max_pooling(self,kernel_size: Tuple[int,int],stride: Tuple[int,int] = (1,1),symbol: Optional[str] = None):
+        rows, cols = self.shape
+        k_rows, k_cols = kernel_size
+        s_rows, s_cols = stride
+        pooled_matrix = []
+        for i in range(0,rows - k_rows + 1,s_rows):
+            row = []
+            for j in range(0,cols - k_cols + 1,s_cols):
+                max_value = max(
+                    self.__matrix[i + m][j + n]
+                    for m in range(k_rows)
+                    for n in range(k_cols)
+                )
+                row.append(max_value)
+            pooled_matrix.append(row)
+        return Matrix(pooled_matrix,symbol)
+
+    def min_pooling(self,kernel_size: Tuple[int,int],stride: Tuple[int,int] = (1,1),symbol: Optional[str] = None):
+        rows, cols = self.shape
+        k_rows, k_cols = kernel_size
+        s_rows, s_cols = stride
+        pooled_matrix = []
+        for i in range(0,rows - k_rows + 1,s_rows):
+            row = []
+            for j in range(0,cols - k_cols + 1,s_cols):
+                min_value = min(
+                    self.__matrix[i + m][j + n]
+                    for m in range(k_rows)
+                    for n in range(k_cols)
+                )
+                row.append(min_value)
+            pooled_matrix.append(row)
+        return Matrix(pooled_matrix,symbol)
+
+    def avg_pooling(self,kernel_size: Tuple[int,int],stride: Tuple[int,int] = (1,1),symbol: Optional[str] = None):
+        rows, cols = self.shape
+        k_rows, k_cols = kernel_size
+        s_rows, s_cols = stride
+        pooled_matrix = []
+        for i in range(0,rows - k_rows + 1,s_rows):
+            row = []
+            for j in range(0,cols - k_cols + 1,s_cols):
+                sum_value = sum(
+                    self.__matrix[i + m][j + n]
+                    for m in range(k_rows)
+                    for n in range(k_cols)
+                )
+                avg_value = sum_value / (k_rows * k_cols)
+                row.append(avg_value)
+            pooled_matrix.append(row)
+        return Matrix(pooled_matrix,symbol)
+
     def type_cast(self,dtype: type,inplace: bool = False):
         if inplace:
             for row in range(self.__row):
@@ -830,8 +882,7 @@ class Matrix:
                     buffer.append(dtype(self.__matrix[row][x]))
                 new_mat.append(buffer)
             return Matrix(new_mat)
-        else:
-            raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
+        else: raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
 
     def copy(self):
         return Matrix([row[:] for row in self.__matrix])
@@ -1025,6 +1076,20 @@ class Matrix:
             return result
         else:
             raise ValueError("invalid argument for axis it can either be None, 0 or 1")
+        
+    def argmax(self):
+        value = -float("inf")
+        for row in self.__matrix:
+            for x in row:
+                if value < x: value = x
+        return value
+    
+    def argmin(self):
+        value = float("inf")
+        for row in self.__matrix:
+            for x in row:
+                if value > x: value = x
+        return value
     
     def sort(self,axis = 1,symbol: Optional[str] = None):
         if axis == 1:
