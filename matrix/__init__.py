@@ -59,7 +59,7 @@ import json
 import csv
 import os
 
-version = "0.5.2"
+version = "0.5.3"
 __mem__ = {}
 
 
@@ -816,6 +816,39 @@ class Matrix:
     def ge(self,other): return self >= other
 
     def le(self,other): return self <= other
+
+    def rand_like(self,seed: Optional[int] = None,symbol: Optional[str] = None):
+        new_mat = []
+        if seed is not None: np.random.seed(seed)
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(np.random.rand())
+            new_mat.append(buffer)
+        return Matrix(new_mat,symbol)
+    
+    def zeros_like(self,symbol: Optional[str] = None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for col in range(self.__col): buffer.append(0)
+            new_mat.append(buffer)
+        return Matrix(new_mat,symbol)
+    
+    def ones_like(self,symbol: Optional[str] =  None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(1)
+            new_mat.append(buffer)
+        return Matrix(new_mat,symbol)
+    
+    def fill_like(self,value: Union[int,float,bool],symbol: Optional[str] = None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(value)
+            new_mat.append(buffer)
+        return Matrix(new_mat,symbol)
 
     def max_pooling(self,kernel_size: Tuple[int,int],stride: Tuple[int,int] = (1,1),symbol: Optional[str] = None):
         rows, cols = self.shape
