@@ -59,7 +59,7 @@ import json
 import csv
 import os
 
-version = "0.5.3"
+version = "0.5.4"
 __mem__ = {}
 
 
@@ -741,6 +741,25 @@ class Matrix:
             return Matrix(new_mat)
         else: raise TypeError(f"unsupported operand type for >=: `{type(other).__name__}` and `Matrix`")
 
+    def hstack(self,other,symbol: Optional[str] = None):
+        if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
+        if self.__col != other.__col: raise ValueError("can't stack two matrices with different shapes")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = self.__matrix[row] + other.__matrix[row]
+            new_mat.append(buffer)
+        return Matrix(new_mat,symbol)
+
+    def vstack(self,other,symbol: Optional[str] = None):
+        if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
+        if self.__col != other.__col: raise ValueError("can't stack two matrices with different shapes")
+        new_mat = []
+        for row in range(self.__row):
+            new_mat.append(self.__matrix[row])
+        for row in range(other.__row):
+            new_mat.append(other.__matrix[row])
+        return Matrix(new_mat,symbol)
+
     def reciprocate(self):
         new_mat = []
         for row in range(self.__row):
@@ -753,10 +772,8 @@ class Matrix:
     def is_null(self):
         for row in range(self.__row):
             for x in range(self.__col):
-                if self.__matrix[row][x] == 0:
-                    continue
-                else:
-                    return False
+                if self.__matrix[row][x] == 0: continue
+                else: return False
         return True
 
     def mat_pow(self,n: int):
