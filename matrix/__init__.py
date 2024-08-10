@@ -949,7 +949,7 @@ class Matrix:
             raise TypeError(f"can't set `{type(value).__name__}` to matrix row")
         else: self.__matrix[row][col] = value
 
-    def concate(self, other:"Matrix"|list, axis:int=0, symbol:Optional[str]=None):
+    def concate(self, other:"Matrix", axis:int=0, symbol:Optional[str]=None):
         if isinstance(other,Matrix):
             if axis == 0:
                 if self.__col != other.__col: raise ValueError("Matrices must have the same number of columns to concatenate vertically")
