@@ -72,7 +72,7 @@ def matrix(array1d:List[Union[int,float,bool]], dim:Tuple[int,int], symbol:Optio
     for i in range(dim[0]):
         row = array1d[i * dim[1]:(i + 1) * dim[1]]
         matrix_2d.append(row)
-    return Matrix(matrix_2d)
+    return Matrix(matrix_2d,symbol)
 
 def __fill(dim:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
     if len(dim) == 2: return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])],symbol = symbol)
