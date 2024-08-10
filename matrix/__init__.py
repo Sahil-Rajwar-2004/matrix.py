@@ -60,11 +60,19 @@ import json
 import csv
 import os
 
-version = "0.5.5"
+version = "0.5.6"
 __mem__ = {}
 
 
-def matrix(array_2d:List[List[Union[int,float]]], symbol:Optional[str]=None): return Matrix(array_2d,symbol)
+def matrix(array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None): return Matrix(array_2d,symbol)
+
+def matrix(array1d:List[Union[int,float,bool]], dim:Tuple[int,int], symbol:Optional[str]=None):
+    if len(array1d) != dim[0] * dim[1]: raise ValueError(f"Can't create a matrix with shape {dim}, {len(array1d)} != {dim[0] * dim[1]}")
+    matrix_2d = []
+    for i in range(dim[0]):
+        row = array1d[i * dim[1]:(i + 1) * dim[1]]
+        matrix_2d.append(row)
+    return Matrix(matrix_2d)
 
 def __fill(dim:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
     if len(dim) == 2: return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])],symbol = symbol)
@@ -1001,7 +1009,9 @@ class Matrix:
     def to_list(self): return self.__matrix
 
     def mean(self, axis=None, symbol:Optional[str]=None):
-        if axis is None: return sum([x for row in self.__matrix for x in row]) / self.__size
+        if axis is None:
+            if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when the 'axis' is None",UserWarning)
+            return sum([x for row in self.__matrix for x in row]) / self.__size
         if axis == 1:
             new_mat = []
             for row in range(self.__row):
@@ -1023,7 +1033,7 @@ class Matrix:
 
     def var(self, axis=None, sample=True, symbol:Optional[str]=None):
         if axis is None:
-            if symbol is not None: warnings.warn("Warning: The 'symbol' parameter is ignored when 'axis' is None.", UserWarning)
+            if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when 'axis' is None.", UserWarning)
             total_elements = sum(len(row) for row in self.__matrix)
             mean_value = self.mean()
             variance_sum = sum((element - mean_value) ** 2 for row in self.__matrix for element in row)
@@ -1055,7 +1065,7 @@ class Matrix:
 
     def median(self, axis=1, symbol:Optional[str]=None):
         if axis is None:
-            if symbol is not None: warnings.warn("the 'symbol' parameter were ignored when 'axis' was None",UserWarning)
+            if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when 'axis' is None",UserWarning)
             flattened = [element for row in self.__matrix for element in row]
             sorted_flattened = sorted(flattened)
             mid = len(sorted_flattened) // 2
@@ -1154,8 +1164,11 @@ class Matrix:
                 if value > x: value = x
         return value
     
-    def sort(self, axis=1, symbol:Optional[str]=None):
-        if axis == 1:
+    def sort(self, axis=None, symbol:Optional[str]=None):
+        if axis is None:
+            if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when 'axis' is None",UserWarning)
+            return matrix(sorted(self.flatten().to_list()[0]),self.__shape,symbol)
+        elif axis == 1:
             new_mat = [sorted(row) for row in self.__matrix]
             return Matrix(new_mat,symbol)
         elif axis == 0:
@@ -1163,15 +1176,13 @@ class Matrix:
             sorted_mat = [sorted(col) for col in new_mat]
             transposed_sorted_mat = [[sorted_mat[col][row] for col in range(self.__col)] for row in range(self.__row)]
             return Matrix(transposed_sorted_mat,symbol)
-        else:
-            raise ValueError("invalid axis given!")
+        raise ValueError("invalid axis given!")
 
     def sqrt(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(self.__matrix[row][x] ** 0.5)
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] ** 0.5)
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1179,8 +1190,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(self.__matrix[row][x] ** (1/3))
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] ** (1/3))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1203,10 +1213,8 @@ class Matrix:
             buffer = []
             for x in range(self.__col):
                 number = self[row][x]
-                if number == int(number):
-                    buffer.append(int(number))
-                else:
-                    buffer.append(int(number) + 1 if number > 0 else int(number))
+                if number == int(number): buffer.append(int(number))
+                else: buffer.append(int(number) + 1 if number > 0 else int(number))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1214,8 +1222,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(self.__matrix[row][x] * scalar)
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] * scalar)
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1223,8 +1230,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(np.log10(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(np.log10(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1232,8 +1238,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(np.log(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(np.log(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1241,8 +1246,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(np.sin(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(np.sin(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1250,8 +1254,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(np.cos(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1259,8 +1262,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(np.tan(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(np.tan(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1268,8 +1270,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(1 / np.cos(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(1 / np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
@@ -1286,8 +1287,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(1 / np.tan(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(1 / np.tan(self.__matrix[row][x]))
             new_mat.append(buffer)
         return Matrix(new_mat,symbol)
 
