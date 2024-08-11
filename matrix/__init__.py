@@ -60,7 +60,7 @@ import json
 import csv
 import os
 
-version = "0.5.6"
+version = "0.5.7"
 __mem__ = {}
 
 
@@ -73,6 +73,33 @@ def matrix(array1d:List[Union[int,float,bool]], dim:Tuple[int,int], symbol:Optio
         row = array1d[i * dim[1]:(i + 1) * dim[1]]
         matrix_2d.append(row)
     return Matrix(matrix_2d,symbol)
+
+def concatenate(matrices:List["Matrix"], axis=0, symbol:Optional[str]=None):
+    if not matrices: raise ValueError("at least one matrix or list is required for concatenation.")
+    first_matrix = matrices[0]
+    if isinstance(first_matrix,Matrix):
+        new_matrix = first_matrix.to_list()
+        reference_row, reference_col = first_matrix.shape
+    elif isinstance(first_matrix,list):
+        new_matrix = first_matrix
+        reference_row, reference_col = len(first_matrix), len(first_matrix[0]) if first_matrix else 0
+    else:  raise TypeError(f"unsupported type {type(first_matrix).__name__} for concatenation.")
+    for other in matrices[1:]:
+        if isinstance(other,Matrix):
+            other_matrix = other.to_list()
+            other_row, other_col = other.shape
+        elif isinstance(other,list):
+            other_matrix = other
+            other_row, other_col = len(other),len(other[0]) if other else 0
+        else: raise TypeError(f"unsupported type {type(other).__name__} for concatenation.")
+        if axis == 0:
+            if reference_col != other_col: raise ValueError("all matrices or lists must have the same number of columns to concatenate vertically.")
+            new_matrix += other_matrix
+        elif axis == 1:
+            if reference_row != other_row: raise ValueError("all matrices or lists must have the same number of rows to concatenate horizontally.")
+            new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
+        else: raise ValueError("axis must be 0 (vertical) or 1 (horizontal).")
+    return Matrix(new_matrix, symbol)
 
 def __fill(dim:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
     if len(dim) == 2: return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])],symbol = symbol)
@@ -160,7 +187,11 @@ class Matrix:
         self.__size = self.__row * self.__col
         self.__shape = self.__row,self.__col
         self.__iter_index = 0
-        if self.__symbol: __mem__[self.__symbol] = self
+        if self.__symbol:
+            if "__mem__" not in globals():
+                global __mem__
+                __mem__ = {}
+            __mem__[self.__symbol] = self
 
     def __check__(self, array_2d, symbol):
         num_elements_in_first_row = len(array_2d[0])
@@ -940,14 +971,12 @@ class Matrix:
             return Matrix(new_mat)
         else: raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
 
-    def copy(self):
-        return Matrix([row[:] for row in self.__matrix])
+    def copy(self, symbol:Optional[str]=None):
+        return Matrix([row[:] for row in self.__matrix],symbol)
 
     def get(self, row:int, col:None|int=None):
-        if col is None:
-            return self.__matrix[row]
-        else:
-            return self.__matrix[row][col]
+        if col is None: return self.__matrix[row]
+        else: return self.__matrix[row][col]
 
     def set(self, row:int, value:List[Union[int,float]] | int | float, col:None|int=None):
         if col is None:
@@ -957,7 +986,7 @@ class Matrix:
             raise TypeError(f"can't set `{type(value).__name__}` to matrix row")
         else: self.__matrix[row][col] = value
 
-    def concate(self, other:"Matrix", axis:int=0, symbol:Optional[str]=None):
+    def concatenate(self, other:Union["Matrix",List], axis:int=0, symbol:Optional[str]=None):
         if isinstance(other,Matrix):
             if axis == 0:
                 if self.__col != other.__col: raise ValueError("Matrices must have the same number of columns to concatenate vertically")
