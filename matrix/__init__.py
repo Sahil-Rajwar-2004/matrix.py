@@ -60,7 +60,7 @@ import json
 import csv
 import os
 
-version = "0.5.7"
+version = "0.5.8"
 __mem__ = {}
 
 
@@ -1380,14 +1380,18 @@ class Matrix:
 
     def is_singular(self):
         if not self.is_square(): raise ValueError("matrix must have equal number of rows and columns")
-        return self.det() == 0
+        return self.det() == 0 
+
+    def is_square(self): return self.__row == self.__col
+
+    def is_row(self): return self.__row == 1
+
+    def is_col(self): return self.__col == 1
 
     def adjoint(self, symbol:Optional[str]=None):
         if not self.is_square(): raise ValueError("adjoint is defined only for square matrices")
         cofactors = [[self.cofactor(i,j) for j in range(self.__col)] for i in range(self.__row)]
         return Matrix(cofactors,symbol).T
-
-    def is_square(self): return self.__row == self.__col
 
     def trace(self):
         if not self.is_square():
@@ -1404,7 +1408,7 @@ class Matrix:
         flattened = [item for row in self.__matrix for item in row]
         return Matrix([flattened],symbol = symbol)
 
-    def reshape(self, dim, symbol:Optional[str]=None):
+    def reshape(self, dim:Tuple[int,int], symbol:Optional[str]=None):
         total_elements = self.__row * self.__col
         if total_elements != dim[0] * dim[1]: raise ValueError(f"cannot reshape array of size {total_elements} into shape {dim}")
         flattened = self.flatten().__matrix[0]
