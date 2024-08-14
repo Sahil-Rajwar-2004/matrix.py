@@ -14,10 +14,10 @@ Key Functions and Methods:
 
 Creation Functions:
 matrix(array_2d): Creates a Matrix object from a 2D list.
-zeros(dim): Creates a matrix of the given dimensions filled with zeros.
-ones(dim): Creates a matrix of the given dimensions filled with ones.
-null(dim): Creates a matrix of the given dimensions filled with null(nan) values
-fill(value, dim): Creates a matrix of the given dimensions filled with a specified value.
+zeros(shape): Creates a matrix of the given dimensions filled with zeros.
+ones(shape): Creates a matrix of the given dimensions filled with ones.
+null(shape): Creates a matrix of the given dimensions filled with null(nan) values
+fill(value, shape): Creates a matrix of the given dimensions filled with a specified value.
 identity(N): Creates an identity matrix of dimensions (N x N).
 random: Creates a matrix with random value and shape (M x N).
 zeros_like(mat): Creates a matrix from the given matrix with zeros
@@ -60,21 +60,22 @@ import json
 import csv
 import os
 
-version = "0.5.8"
+version = "0.6.0"
 __mem__ = {}
 
 
 def matrix(array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None): return Matrix(array_2d,symbol)
 
-def matrix(array1d:List[Union[int,float,bool]], dim:Tuple[int,int], symbol:Optional[str]=None):
-    if len(array1d) != dim[0] * dim[1]: raise ValueError(f"Can't create a matrix with shape {dim}, {len(array1d)} != {dim[0] * dim[1]}")
+def matrix(array1d:List[Union[int,float,bool]], shape:Tuple[int,int], symbol:Optional[str]=None):
+    if len(array1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array1d)} != {shape[0] * shape[1]}")
     matrix_2d = []
-    for i in range(dim[0]):
-        row = array1d[i * dim[1]:(i + 1) * dim[1]]
+    for i in range(shape[0]):
+        row = array1d[i * shape[1]:(i + 1) * shape[1]]
         matrix_2d.append(row)
     return Matrix(matrix_2d,symbol)
 
 def concatenate(matrices:List["Matrix"], axis=0, symbol:Optional[str]=None):
+    if axis not in [None,0,1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
     if not matrices: raise ValueError("at least one matrix or list is required for concatenation.")
     first_matrix = matrices[0]
     if isinstance(first_matrix,Matrix):
@@ -98,20 +99,35 @@ def concatenate(matrices:List["Matrix"], axis=0, symbol:Optional[str]=None):
         elif axis == 1:
             if reference_row != other_row: raise ValueError("all matrices or lists must have the same number of rows to concatenate horizontally.")
             new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
-        else: raise ValueError("axis must be 0 (vertical) or 1 (horizontal).")
     return Matrix(new_matrix, symbol)
 
-def __fill(dim:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
-    if len(dim) == 2: return Matrix([[value for _ in range(dim[1])] for _ in range(dim[0])],symbol = symbol)
+def arange(start:int, end:int, step:int=1, shape:Tuple[int,int]=None, endpoint=False, symbol:Optional[str]=None):
+    if endpoint: end += 1
+    if shape is None:  return Matrix([[x for x in range(start,end,step)]],symbol)
+    else: return Matrix([[x for x in range(start,end,step)]],symbol).reshape(shape)
+
+def linspace(start:int, stop:int, num:int=50, endpoint:bool=True, shape:Tuple[int,int]=None, symbol:Optional[str]=None):
+    if num <= 0: return Matrix([[]])
+    if endpoint: step = (stop - start) / (num - 1)
+    else: step = (stop - start) / num
+    linspace_values = [start + step * i for i in range(num)]
+    if not endpoint: linspace_values = linspace_values[:-1]
+    if shape is None: return Matrix([linspace_values],symbol)
+    return Matrix([linspace_values],symbol).reshape(shape)
+
+def empty(symbol:Optional[str]=None): return Matrix([[]],symbol)
+
+def __fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
+    if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])],symbol = symbol)
     raise ValueError("dimension must consist only number of rows and columns")
 
-def ones(dim:Tuple[int,int], symbol:Optional[str]=None): return __fill(dim,1,symbol)
+def ones(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,1,symbol)
 
-def zeros(dim:Tuple[int,int], symbol:Optional[str]=None): return __fill(dim,0,symbol)    
+def zeros(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)    
 
-def null(dim:Tuple[int,int], symbol:Optional[str]=None): return __fill(dim,0,symbol)
+def null(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)
 
-def fill(dim:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None): return __fill(dim,value,symbol)
+def fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None): return __fill(shape,value,symbol)
 
 def ones_like(mat:"Matrix", symbol:Optional[str]=None): return ones((mat.row,mat.col),symbol)
 
@@ -143,12 +159,12 @@ def diagonal(value:int|float, N:int, symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat,symbol)
 
-def rand(dim:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None):
+def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None):
     new_mat = []
     if seed is not None: np.random.seed(seed)
-    for _ in range(dim[0]):
+    for _ in range(shape[0]):
         buffer = []
-        for _ in range(dim[1]): buffer.append(np.random.rand())
+        for _ in range(shape[1]): buffer.append(np.random.rand())
         new_mat.append(buffer)
     return Matrix(new_mat,symbol)
 
@@ -178,7 +194,7 @@ def from_symbol(symbol): return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self, array_2d:List[List[Union[int,float]]], symbol:Optional[str]=None):
+    def __init__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None):
         self.__check__(array_2d,symbol)
         self.__matrix = array_2d
         self.__symbol = symbol
@@ -193,16 +209,14 @@ class Matrix:
                 __mem__ = {}
             __mem__[self.__symbol] = self
 
-    def __check__(self, array_2d, symbol):
+    def __check__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None):
         num_elements_in_first_row = len(array_2d[0])
-        for i, row in enumerate(array_2d):
+        for i,row in enumerate(array_2d):
             if len(row) != num_elements_in_first_row: raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
             for element in row:
                 if not isinstance(element,(int,float,bool)): raise TypeError(f"element {element} in row {i+1} is not an int or float")
-        if not isinstance(symbol,Union[None,str]): raise ValueError(f"symbol must be a string not '{type(symbol).__name__}'")
-        if symbol is not None:
-            if not isinstance(symbol,str): raise ValueError(f"symbol must be a string or None, not '{type(symbol).__name__}'")
-            if symbol in __mem__: raise KeyError(f"'{symbol}' already exists! try with different symbol")
+        if symbol is not None and not isinstance(symbol, str): raise ValueError(f"Symbol must be a string or None, not '{type(symbol).__name__}'.")
+        if symbol is not None and symbol in globals().get("__mem__", {}): raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
 
     def __iter__(self):
         self.__iter_index = 0
@@ -284,6 +298,9 @@ class Matrix:
     def from_numpy(cls, array, symbol:Optional[str]=None):
         if isinstance(array,np.ndarray): return cls(array.tolist(),symbol)
         raise TypeError("input should be a numpy array")
+    
+    @staticmethod
+    def __exp(value: Union[int,float]): return 2.7182818284590452353602874713527 ** value
 
     def numpy(self): return np.array(self.__matrix)
 
@@ -791,11 +808,144 @@ class Matrix:
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
         if self.__col != other.__col: raise ValueError("can't stack two matrices with different shapes")
         new_mat = []
-        for row in range(self.__row):
-            new_mat.append(self.__matrix[row])
-        for row in range(other.__row):
-            new_mat.append(other.__matrix[row])
+        for row in range(self.__row): new_mat.append(self.__matrix[row])
+        for row in range(other.__row): new_mat.append(other.__matrix[row])
         return Matrix(new_mat,symbol)
+
+    def append(self, array1d:List[Union[int,float,bool]], axis:int=0, index:int=0):
+        if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
+        if axis == 0:
+            if len(array1d) != self.__col: raise ValueError(f"length of the row to append ({len(array1d)}) must match the number of columns ({self.__col})")
+            self.__matrix.insert(index,array1d)
+            self.__row += 1
+        elif axis == 1:
+            if len(array1d) != self.__row: raise ValueError(f"length of the column to append ({len(array1d)}) must match the number of rows ({self.__row})")
+            for x in range(self.__row): self.__matrix.insert(index,array1d)
+            self.__col += 1
+        self.__shape = (self.__row,self.__col)
+        self.__size = self.__row * self.__col
+    
+    def remove(self, axis:int=0, index:int=0):
+        if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
+        if axis == 0:
+            if index >= self.__row and index < 0: raise ValueError(f"row index {index} is out of bound for axis 0 with size {self.__row}")
+            del self.__matrix[index]
+            self.__row -= 1
+        elif axis == 1:
+            if index >= self.__col or index < 0: raise ValueError(f"column index {index} is out of bound for axis 1 with size {self.__col}")
+            for row in self.__matrix: del row[index]
+            self.__col -= 1
+        self.__shape = (self.__row,self.__col)
+        self.__size = self.__row * self.__col
+
+    def replace(self, array1d:List[Union[int,float,bool]], axis:int=0, index:int=0):
+        if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
+        if axis == 0:
+            if len(array1d) == self.__col: raise ValueError(f"length of the new row ({len(array1d)}) must match the number of columns ({self.__col})")
+            if not 0 <= index < self.__row: raise IndexError(f"row index {index} is out of bounds")
+            self.__matrix[index] = array1d
+        elif axis == 1:
+            if len(array1d) != self.__row: raise ValueError(f"length of the new column ({len(array1d)}) must match the number of rows ({self.__row})")
+            if not 0 <= index < self.__col: raise IndexError(f"col index {index} is out of bounds")
+            for x in range(self.__row): self.__matrix[x][index] = array1d[x]
+
+    def cumsum(self, axis:Union[int,None]=None, symbol:Optional[str]=None):
+        if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
+        if axis is None:
+            flattend = [x for row in self.__matrix for x in row]
+            cumsum_flattend = [sum(flattend[:i+1]) for i in range(len(flattend))]
+            result_matrix = [cumsum_flattend[i:i + self.__col] for i in range(0,len(cumsum_flattend),self.__col)]
+        elif axis == 0:
+            result_matrix = []
+            for col in range(self.__col):
+                col_cumsum = []
+                cumsum_ = 0
+                for row in range(self.__row):
+                    cumsum_ += self.__matrix[row][col]
+                    col_cumsum.append(cumsum_)
+                result_matrix.append(col_cumsum)
+            result_matrix = list(map(list,zip(*result_matrix)))
+        elif axis == 1:
+            result_matrix = []
+            for row in self.__matrix:
+                row_cumsum = []
+                cumulative_sum = 0
+                for element in row:
+                    cumulative_sum += element
+                    row_cumsum.append(cumulative_sum)
+                result_matrix.append(row_cumsum)
+        return Matrix(result_matrix,symbol)
+    
+    def cumprod(self, axis:Union[int,None]=None, symbol:Optional[str]=None):
+        if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
+        if axis is None:
+            flattend = [x for row in self.__matrix for x in row]
+            cumprod_flattend = [flattend[0]]
+            for i in range(1,len(flattend)): cumprod_flattend.append(cumprod_flattend[-1] * flattend[i])
+            result_matrix = [cumprod_flattend[i:i + self.__col] for i in range(0,len(cumprod_flattend),self.__col)]
+        elif axis == 0:
+            result_matrix = []
+            for col in range(self.__col):
+                col_cumprod = []
+                cumulative_product = 1
+                for row in range(self.__row):
+                    cumulative_product *= self.__matrix[row][col]
+                    col_cumprod.append(cumulative_product)
+                result_matrix.append(col_cumprod)
+            result_matrix = list(map(list, zip(*result_matrix)))
+        elif axis == 1:
+            result_matrix = []
+            for row in self.__matrix:
+                row_cumprod = []
+                cumulative_product = 1
+                for element in row:
+                    cumulative_product *= element
+                    row_cumprod.append(cumulative_product)
+                result_matrix.append(row_cumprod)
+        return Matrix(result_matrix,symbol)\
+        
+    def gradient(self, axis:int=0):
+        if axis not in [0,1]: raise ValueError("axis must be 0 (row-wise) and 1 (column-wise)")
+        grad = []
+        if axis == 0:
+            for row in range(self.__row):
+                grad_row = []
+                for x in range(self.__col):
+                    if row == 0: grad_val = self.__matrix[row][x] - self.__matrix[row][x]
+                    elif row == self.__row - 1: grad_val = self.__matrix[row][x] - self.__matrix[row - 1][x]
+                    else: grad_val = (self.__matrix[row + 1][x] - self.__matrix[row - 1][x]) / 2
+                    grad_row.append(grad_val)
+                grad.append(grad_row)
+        elif axis == 1:
+            for row in range(self.__row):
+                grad_row = []
+                for x in range(self.__col):
+                    if x == 0: grad_val = self.__matrix[row][x + 1] - self.__matrix[row][x]
+                    elif x == self.__col - 1: grad_val = self.__matrix[row][x] - self.__matrix[row][x - 1]
+                    else: grad_val = (self.__matrix[row][x + 1] - self.__matrix[row][x - 1]) / 2
+                    grad_row.append(grad_val)
+                grad.append(grad_row)
+        return grad
+    
+    def softmax(self, axis:int=0, symbol:Optional[str]=None):
+        if axis not in [0,1]: raise ValueError("axis must be 0 (row-wise) and 1 (column-wise)")
+        softmax_matrix = []
+        if axis == 0:
+            for x in range(self.__col):
+                column = [self.__matrix[y][x] for y in range(self.__row)]
+                exp_column = [self.__exp(i) for i in column]
+                sum_exp = sum(exp_column)
+                softmax_column = [exp_val / sum_exp for exp_val in exp_column]
+                softmax_matrix.append(softmax_column)
+            softmax_matrix = list(map(list,zip(*softmax_matrix)))
+        elif axis == 1:
+            for i in range(self.__row):
+                row = self.__matrix[i]
+                exp_row = [self.__exp(x) for x in row]
+                sum_exp = sum(exp_row)
+                softmax_row = [exp_val / sum_exp for exp_val in exp_row]
+                softmax_matrix.append(softmax_row)
+        return Matrix(softmax_matrix,symbol)
 
     def reciprocate(self):
         new_mat = []
@@ -805,6 +955,12 @@ class Matrix:
                 buffer.append(1 / self.__matrix[row][x])
             new_mat.append(buffer)
         return Matrix(new_mat)
+    
+    def isnan(self):
+        for row in range(self.__row):
+            for x in range(self.__col):
+                if isinstance(self.__matrix[row][x],float) and self.__matrix[row][x] != self.__matrix[row][x]: return True
+        return False
 
     def is_null(self):
         for row in range(self.__row):
@@ -812,6 +968,13 @@ class Matrix:
                 if self.__matrix[row][x] == 0: continue
                 else: return False
         return True
+    
+    def countnan(self):
+        count = 0
+        for row in range(self.__row):
+            for x in range(self.__col):
+                if isinstance(self.__matrix[row][x],float) and self.__matrix[row][x] != self.__matrix[row][x]: count += 1
+        return count
 
     def mat_pow(self, n:int):
         if not isinstance(n,int): raise TypeError(f"given base must be an integer not `{type(n).__name__}`")
@@ -956,7 +1119,7 @@ class Matrix:
             pooled_matrix.append(row)
         return Matrix(pooled_matrix,symbol)
 
-    def type_cast(self, dtype:type, inplace:bool=False):
+    def astype(self, dtype:type, inplace:bool=False):
         if inplace:
             for row in range(self.__row):
                 for x in range(self.__col):
@@ -1394,8 +1557,7 @@ class Matrix:
         return Matrix(cofactors,symbol).T
 
     def trace(self):
-        if not self.is_square():
-            raise ValueError("given matrix must be a square matrix number of rows and columns must be the same")
+        if not self.is_square(): raise ValueError("given matrix must be a square matrix number of rows and columns must be the same")
         total = 0
         for x in range(self.__row):
             for y in range(self.__col):
@@ -1408,14 +1570,14 @@ class Matrix:
         flattened = [item for row in self.__matrix for item in row]
         return Matrix([flattened],symbol = symbol)
 
-    def reshape(self, dim:Tuple[int,int], symbol:Optional[str]=None):
+    def reshape(self, shape:Tuple[int,int], symbol:Optional[str]=None):
         total_elements = self.__row * self.__col
-        if total_elements != dim[0] * dim[1]: raise ValueError(f"cannot reshape array of size {total_elements} into shape {dim}")
+        if total_elements != shape[0] * shape[1]: raise ValueError(f"cannot reshape array of size {total_elements} into shape {shape}")
         flattened = self.flatten().__matrix[0]
         reshaped = []
-        for i in range(dim[0]):
+        for i in range(shape[0]):
             row = []
-            for j in range(dim[1]): row.append(flattened[i * dim[1] + j])
+            for j in range(shape[1]): row.append(flattened[i * shape[1] + j])
             reshaped.append(row)
         return Matrix(reshaped,symbol)
 
@@ -1505,4 +1667,3 @@ class Matrix:
         netx.draw_networkx_edge_labels(G,pos,edge_labels = edge_labels,font_color = "red")
         plt.title(title)
         plt.show()
-
