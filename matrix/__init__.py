@@ -62,7 +62,7 @@ import json
 import csv
 import os
 
-version = "0.6.1"
+version = "0.6.2"
 __mem__ = {}
 
 
@@ -306,7 +306,34 @@ class Matrix:
             return self.__matrix[row][col]
         else: raise StopIteration
 
-    def __repr__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
+    # def __repr__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
+
+    def __repr__(self):
+        formatted_matrix = self.__formating()
+        symbol_str = f"'{self.__symbol}'" if self.__symbol else None
+        return f"Matrix({formatted_matrix}, symbol={symbol_str}, shape={self.__shape})"
+
+    def __formating(self):
+        if not self.__matrix or not self.__matrix[0]: return "[]"
+        max_width = max(len(str(element)) for row in self.__matrix for element in row)
+        rows = []
+        for i,row in enumerate(self.__matrix):
+            if len(row) > 7:
+                row_str = ", ".join(f"{element:>{max_width}}" for element in row[:3])
+                row_str += ", ..., " + ", ".join(f"{element:>{max_width}}" for element in row[-3:])
+            else: row_str = ", ".join(f"{element:>{max_width}}" for element in row)
+            rows.append(row_str)
+        if len(rows) > 7:
+            result = "[\n"
+            result += ",\n".join(f"    [{row}]" for row in rows[:3])
+            result += ",\n    ...,\n"
+            result += ",\n".join(f"    [{row}]" for row in rows[-3:])
+            result += "\n   ]"
+        else:
+            result = "[\n"
+            result += ",\n".join(f"    [{row}]" for row in rows)
+            result += "\n]"
+        return result
 
     def __call__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
 
