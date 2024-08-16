@@ -13,7 +13,8 @@ It also supports operations like LU decomposition, matrix reshaping, and calcula
 Key Functions and Methods:
 
 Creation Functions:
-matrix(array_2d): Creates a Matrix object from a 2D list.
+from_1d(array1d): Create a Matrix object from a 1D array with specified shape.
+from_2d(array2d): Creates a Matrix object from a 2D array.
 zeros(shape): Creates a matrix of the given dimensions filled with zeros.
 ones(shape): Creates a matrix of the given dimensions filled with ones.
 null(shape): Creates a matrix of the given dimensions filled with null(nan) values
@@ -50,6 +51,7 @@ numpy(): Converts the Matrix object to a NumPy array.
 
 """
 
+
 from typing import List,Tuple,Union,Optional
 from matplotlib import pyplot as plt
 import networkx as netx
@@ -60,13 +62,13 @@ import json
 import csv
 import os
 
-version = "0.6.0"
+version = "0.6.1"
 __mem__ = {}
 
 
-def matrix(array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None): return Matrix(array_2d,symbol)
+def from_2d(array2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None): return Matrix(array2d,symbol)
 
-def matrix(array1d:List[Union[int,float,bool]], shape:Tuple[int,int], symbol:Optional[str]=None):
+def from_1d(array1d:List[Union[int,float,bool]], shape:Tuple[int,int], symbol:Optional[str]=None):
     if len(array1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array1d)} != {shape[0] * shape[1]}")
     matrix_2d = []
     for i in range(shape[0]):
@@ -74,7 +76,7 @@ def matrix(array1d:List[Union[int,float,bool]], shape:Tuple[int,int], symbol:Opt
         matrix_2d.append(row)
     return Matrix(matrix_2d,symbol)
 
-def concatenate(matrices:List["Matrix"], axis=0, symbol:Optional[str]=None):
+def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
     if axis not in [None,0,1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
     if not matrices: raise ValueError("at least one matrix or list is required for concatenation.")
     first_matrix = matrices[0]
@@ -101,23 +103,96 @@ def concatenate(matrices:List["Matrix"], axis=0, symbol:Optional[str]=None):
             new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
     return Matrix(new_matrix, symbol)
 
-def arange(start:int, end:int, step:int=1, shape:Tuple[int,int]=None, endpoint=False, symbol:Optional[str]=None):
+def arange(start:int, end:int, step:int=1, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
     if endpoint: end += 1
     if shape is None:  return Matrix([[x for x in range(start,end,step)]],symbol)
     else: return Matrix([[x for x in range(start,end,step)]],symbol).reshape(shape)
 
-def linspace(start:int, stop:int, num:int=50, endpoint:bool=True, shape:Tuple[int,int]=None, symbol:Optional[str]=None):
+def linspace(start:int, end:int, num:int=50, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
     if num <= 0: return Matrix([[]])
-    if endpoint: step = (stop - start) / (num - 1)
-    else: step = (stop - start) / num
+    if endpoint: step = (end - start) / (num - 1)
+    else: step = (end - start) / num
     linspace_values = [start + step * i for i in range(num)]
     if not endpoint: linspace_values = linspace_values[:-1]
     if shape is None: return Matrix([linspace_values],symbol)
     return Matrix([linspace_values],symbol).reshape(shape)
 
+def add(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: return matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result + matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def sub(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: return matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result - matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def matmul(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: return matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result @ matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def mul(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: raise matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result @ matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def tdiv(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: return matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result / matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def fdiv(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: raise matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result // matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def mod(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: return matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result % matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
+def pow(matrices:List["Matrix"], symbol:Optional[str]=None):
+    N = len(matrices)
+    if N == 0: raise ValueError("the list of matrices is empty")
+    elif N == 1: raise matrices[0]
+    result = matrices[0]
+    for x in range(1,N): result = result ** matrices[x]
+    if symbol is not None: result.assign_symbol(symbol)
+    return result
+
 def empty(symbol:Optional[str]=None): return Matrix([[]],symbol)
 
 def __fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
+    # NOTE just a helper function
     if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])],symbol = symbol)
     raise ValueError("dimension must consist only number of rows and columns")
 
@@ -139,7 +214,7 @@ def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None):
 
 def fill_like(mat:"Matrix", value:Union[int,float,bool], symbol:Optional[str]=None): return fill((mat.row,mat.col),value,symbol)
 
-def identity(N:int, symbol:Optional[str]=None):
+def identity(N:int, symbol:Optional[str]=None): 
     new_mat = []
     for x in range(N):
         buffer = []
@@ -149,7 +224,7 @@ def identity(N:int, symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat,symbol)
 
-def diagonal(value:int|float, N:int, symbol:Optional[str]=None):
+def diagonal(value:int|float, N:int, symbol:Optional[str]=None): 
     new_mat = []
     for row in range(N):
         buffer = []
@@ -159,7 +234,7 @@ def diagonal(value:int|float, N:int, symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat,symbol)
 
-def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None):
+def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None): 
     new_mat = []
     if seed is not None: np.random.seed(seed)
     for _ in range(shape[0]):
@@ -184,18 +259,18 @@ def read_json(filename:str, symbol:Optional[str]=None):
             new_mat.append(data[f"{x}"])
     return Matrix(new_mat,symbol)
 
-def mem():
+def mem(): 
     string = ""
     keys = __mem__.keys()
     for x in keys: string += f"{x} = {__mem__[x]}\n"
     return string
 
-def from_symbol(symbol): return __mem__[symbol]
+def from_symbol(symbol:str): return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None):
-        self.__check__(array_2d,symbol)
+    def __init__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None, overwrite:bool=False):
+        self.__check__(array_2d,symbol,overwrite)
         self.__matrix = array_2d
         self.__symbol = symbol
         self.__row = len(array_2d)
@@ -209,14 +284,15 @@ class Matrix:
                 __mem__ = {}
             __mem__[self.__symbol] = self
 
-    def __check__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None):
+    def __check__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None, overwrite:bool=False):
         num_elements_in_first_row = len(array_2d[0])
         for i,row in enumerate(array_2d):
             if len(row) != num_elements_in_first_row: raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
             for element in row:
                 if not isinstance(element,(int,float,bool)): raise TypeError(f"element {element} in row {i+1} is not an int or float")
         if symbol is not None and not isinstance(symbol, str): raise ValueError(f"Symbol must be a string or None, not '{type(symbol).__name__}'.")
-        if symbol is not None and symbol in globals().get("__mem__", {}): raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
+        if symbol is not None and not symbol in globals().get("__mem__",{}) and overwrite is True: __mem__[symbol] = self
+        if symbol is not None and symbol in globals().get("__mem__",{}) and overwrite is False: raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
 
     def __iter__(self):
         self.__iter_index = 0
@@ -232,17 +308,19 @@ class Matrix:
 
     def __repr__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
 
+    def __call__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
+
     def __del__(self):
         if hasattr(self,"__symbol") and self.__symbol: del __mem__[self.__symbol]
 
-    def assign_symbol(self, new_symbol):
+    def assign_symbol(self, new_symbol:str): 
         if self.__symbol is None and new_symbol not in __mem__.keys():
             self.__symbol = new_symbol
             __mem__[self.__symbol] = self
         else: raise ValueError(f"'{new_symbol}' already exists! try to use different symbol")
         return self.update_symbol(new_symbol)
 
-    def update_symbol(self, new_symbol):
+    def update_symbol(self, new_symbol:str):
         if self.__symbol is None: return self.assign_symbol(new_symbol)
         else:
             del __mem__[self.__symbol]
@@ -290,9 +368,7 @@ class Matrix:
     def symbol(self): return self.__symbol
 
     @property
-    def T(self):
-        t = [[self.__matrix[j][i] for j in range(self.__row)] for i in range(self.__col)]
-        return Matrix(t)
+    def T(self): return Matrix([[self.__matrix[j][i] for j in range(self.__row)] for i in range(self.__col)])
 
     @classmethod
     def from_numpy(cls, array, symbol:Optional[str]=None):
@@ -841,7 +917,7 @@ class Matrix:
     def replace(self, array1d:List[Union[int,float,bool]], axis:int=0, index:int=0):
         if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
         if axis == 0:
-            if len(array1d) == self.__col: raise ValueError(f"length of the new row ({len(array1d)}) must match the number of columns ({self.__col})")
+            if len(array1d) != self.__col: raise ValueError(f"length of the new row ({len(array1d)}) must match the number of columns ({self.__col})")
             if not 0 <= index < self.__row: raise IndexError(f"row index {index} is out of bounds")
             self.__matrix[index] = array1d
         elif axis == 1:
@@ -1359,7 +1435,7 @@ class Matrix:
     def sort(self, axis=None, symbol:Optional[str]=None):
         if axis is None:
             if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when 'axis' is None",UserWarning)
-            return matrix(sorted(self.flatten().to_list()[0]),self.__shape,symbol)
+            return from_1d(sorted(self.flatten().to_list()[0]),self.__shape,symbol)
         elif axis == 1:
             new_mat = [sorted(row) for row in self.__matrix]
             return Matrix(new_mat,symbol)
