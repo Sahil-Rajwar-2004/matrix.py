@@ -3,7 +3,7 @@ from setuptools import setup,find_packages
 
 setup(
     name = "matrix",
-    version = "0.6.1",
+    version = "0.6.2",
     author = "Sahil Rajwar",
     description = "python library for doing calculations with matrices",
     long_description = open("README.md","r",encoding = "utf-8").read(),
