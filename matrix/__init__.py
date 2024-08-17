@@ -13,8 +13,8 @@ It also supports operations like LU decomposition, matrix reshaping, and calcula
 Key Functions and Methods:
 
 Creation Functions:
-from_1d(array1d): Create a Matrix object from a 1D array with specified shape.
-from_2d(array2d): Creates a Matrix object from a 2D array.
+from_1d(array_1d): Create a Matrix object from a 1D array with specified shape.
+from_2d(array_2d): Creates a Matrix object from a 2D array.
 zeros(shape): Creates a matrix of the given dimensions filled with zeros.
 ones(shape): Creates a matrix of the given dimensions filled with ones.
 null(shape): Creates a matrix of the given dimensions filled with null(nan) values
@@ -62,19 +62,19 @@ import json
 import csv
 import os
 
-version = "0.6.3"
+version = "0.6.4"
 __mem__ = {}
 
 
-def from_2d(array2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None): return Matrix(array2d,symbol)
+def from_2d(array_2d:List[List[Union[int,float,bool]]], dtype:Type=float, symbol:Optional[str]=None): return Matrix(array_2d,dtype=dtype,symbol=symbol)
 
-def from_1d(array1d:List[Union[int,float,bool]], shape:Tuple[int,int], symbol:Optional[str]=None):
-    if len(array1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array1d)} != {shape[0] * shape[1]}")
+def from_1d(array_1d:List[Union[int,float,bool]], shape:Tuple[int,int], dtype:Type=float, symbol:Optional[str]=None):
+    if len(array_1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array_1d)} != {shape[0] * shape[1]}")
     matrix_2d = []
     for i in range(shape[0]):
-        row = array1d[i * shape[1]:(i + 1) * shape[1]]
+        row = array_1d[i * shape[1]:(i + 1) * shape[1]]
         matrix_2d.append(row)
-    return Matrix(matrix_2d,symbol)
+    return Matrix(matrix_2d,dtype=dtype,symbol=symbol)
 
 def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
     if axis not in [None,0,1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
