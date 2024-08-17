@@ -52,7 +52,7 @@ numpy(): Converts the Matrix object to a NumPy array.
 """
 
 
-from typing import List,Tuple,Union,Optional
+from typing import List,Tuple,Union,Optional,Type
 from matplotlib import pyplot as plt
 import networkx as netx
 import seaborn as sns
@@ -62,7 +62,7 @@ import json
 import csv
 import os
 
-version = "0.6.2"
+version = "0.6.3"
 __mem__ = {}
 
 
@@ -101,7 +101,7 @@ def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
         elif axis == 1:
             if reference_row != other_row: raise ValueError("all matrices or lists must have the same number of rows to concatenate horizontally.")
             new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
-    return Matrix(new_matrix, symbol)
+    return Matrix(new_matrix,symbol)
 
 def arange(start:int, end:int, step:int=1, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
     if endpoint: end += 1
@@ -269,9 +269,10 @@ def from_symbol(symbol:str): return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None, overwrite:bool=False):
-        self.__check__(array_2d,symbol,overwrite)
+    def __init__(self, array_2d:List[List[Union[int,float,bool]]], dtype:Optional[Type]=float, symbol:Optional[str]=None, overwrite:bool=False):
+        self.__check__(array_2d,dtype,symbol,overwrite)
         self.__matrix = array_2d
+        self.__dtype = dtype
         self.__symbol = symbol
         self.__row = len(array_2d)
         self.__col = len(array_2d[0])
@@ -282,16 +283,21 @@ class Matrix:
             if "__mem__" not in globals():
                 global __mem__
                 __mem__ = {}
-            __mem__[self.__symbol] = self
+            __mem__[self.__symbol] = self()
 
-    def __check__(self, array_2d:List[List[Union[int,float,bool]]], symbol:Optional[str]=None, overwrite:bool=False):
+    def __check__(self, array_2d:List[List[Union[int,float,bool]]], dtype:Type=float, symbol:Optional[str]=None, overwrite:bool=False):
         num_elements_in_first_row = len(array_2d[0])
         for i,row in enumerate(array_2d):
             if len(row) != num_elements_in_first_row: raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
             for element in row:
                 if not isinstance(element,(int,float,bool)): raise TypeError(f"element {element} in row {i+1} is not an int or float")
-        if symbol is not None and not isinstance(symbol, str): raise ValueError(f"Symbol must be a string or None, not '{type(symbol).__name__}'.")
-        if symbol is not None and not symbol in globals().get("__mem__",{}) and overwrite is True: __mem__[symbol] = self
+        if dtype in [int,float,bool]:
+            for idx1,row in enumerate(array_2d):
+                for idx2,x in enumerate(row): array_2d[idx1][idx2] = dtype(x)
+        if symbol is not None and not isinstance(symbol,str): raise ValueError(f"Symbol must be a string or None, not '{type(symbol).__name__}'.")
+        if symbol is not None and not symbol in globals().get("__mem__",{}) and overwrite is True:
+            del __mem__[symbol]
+            __mem__[symbol] = self()
         if symbol is not None and symbol in globals().get("__mem__",{}) and overwrite is False: raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
 
     def __iter__(self):
@@ -311,7 +317,7 @@ class Matrix:
     def __repr__(self):
         formatted_matrix = self.__formating()
         symbol_str = f"'{self.__symbol}'" if self.__symbol else None
-        return f"Matrix({formatted_matrix}, symbol={symbol_str}, shape={self.__shape})"
+        return f"Matrix({formatted_matrix}, dtyp={self.__dtype.__name__}, symbol={symbol_str}, shape={self.__shape})"
 
     def __formating(self):
         if not self.__matrix or not self.__matrix[0]: return "[]"
@@ -335,7 +341,9 @@ class Matrix:
             result += "\n]"
         return result
 
-    def __call__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
+    def __call__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} dtype={self.__dtype.__name__} symbol={self.__symbol}>"
+
+    def call(self): return self()
 
     def __del__(self):
         if hasattr(self,"__symbol") and self.__symbol: del __mem__[self.__symbol]
@@ -343,7 +351,7 @@ class Matrix:
     def assign_symbol(self, new_symbol:str): 
         if self.__symbol is None and new_symbol not in __mem__.keys():
             self.__symbol = new_symbol
-            __mem__[self.__symbol] = self
+            __mem__[self.__symbol] = self()
         else: raise ValueError(f"'{new_symbol}' already exists! try to use different symbol")
         return self.update_symbol(new_symbol)
 
@@ -352,7 +360,7 @@ class Matrix:
         else:
             del __mem__[self.__symbol]
             self.__symbol = new_symbol
-            __mem__[self.__symbol] = self
+            __mem__[self.__symbol] = self()
 
     def remove_symbol(self):
         if self.__symbol is not None:
@@ -396,6 +404,9 @@ class Matrix:
 
     @property
     def T(self): return Matrix([[self.__matrix[j][i] for j in range(self.__row)] for i in range(self.__col)])
+
+    @property
+    def dtype(self): return self.__dtype.__name__
 
     @classmethod
     def from_numpy(cls, array, symbol:Optional[str]=None):
@@ -1222,23 +1233,21 @@ class Matrix:
             pooled_matrix.append(row)
         return Matrix(pooled_matrix,symbol)
 
-    def astype(self, dtype:type, inplace:bool=False):
+    def astype(self, dtype:Type, inplace:bool=False):
         if inplace:
             for row in range(self.__row):
-                for x in range(self.__col):
-                    self.__matrix[row][x] = dtype(self.__matrix[row][x])
+                for x in range(self.__col): self.__matrix[row][x] = dtype(self.__matrix[row][x])
+            self.__dtype = dtype
         elif not inplace:
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    buffer.append(dtype(self.__matrix[row][x]))
+                for x in range(self.__col): buffer.append(dtype(self.__matrix[row][x]))
                 new_mat.append(buffer)
-            return Matrix(new_mat)
+            return Matrix(new_mat,dtype=dtype)
         else: raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
 
-    def copy(self, symbol:Optional[str]=None):
-        return Matrix([row[:] for row in self.__matrix],symbol)
+    def copy(self, symbol:Optional[str]=None): return Matrix([row[:] for row in self.__matrix],symbol)
 
     def get(self, row:int, col:None|int=None):
         if col is None: return self.__matrix[row]
@@ -1278,16 +1287,13 @@ class Matrix:
         with open(file_path,"w") as file:
             file.write("{\n")
             for row in range(self.__row):
-                if row == self.__row - 1:
-                    file.write(f'   "{row}": {self.__matrix[row]}\n')
-                else:
-                    file.write(f'   "{row}": {self.__matrix[row]},\n')
+                if row == self.__row - 1: file.write(f'   "{row}": {self.__matrix[row]}\n')
+                else: file.write(f'   "{row}": {self.__matrix[row]},\n')
             file.write("}\n")
             file.close()
 
     def to_csv(self, file_path:str):
-        if os.path.exists(file_path):
-            raise FileExistsError(f"file with name `{file_path}` already exist!")
+        if os.path.exists(file_path): raise FileExistsError(f"file with name `{file_path}` already exist!")
         with open(file_path,"w") as file:
             for row in range(self.__row):
                 for x in range(self.__col):
@@ -1311,20 +1317,17 @@ class Matrix:
             new_mat = []
             for row in range(self.__row):
                 total = 0
-                for x in range(self.__col):
-                    total += self.__matrix[row][x]
+                for x in range(self.__col): total += self.__matrix[row][x]
                 new_mat.append([total / self.__col])
             return Matrix(new_mat,symbol)
         elif axis == 0:
             new_mat = []
             for x in range(self.__col):
                 total = 0
-                for row in range(self.__row):
-                    total += self.__matrix[row][x]
+                for row in range(self.__row): total += self.__matrix[row][x]
                 new_mat.append([total / self.__row])
             return Matrix(new_mat,symbol)
-        else:
-            raise ValueError("invalid axis given!")
+        else: raise ValueError("invalid axis given!")
 
     def var(self, axis=None, sample=True, symbol:Optional[str]=None):
         if axis is None:
