@@ -62,19 +62,19 @@ import json
 import csv
 import os
 
-version = "0.6.4"
+version = "0.6.5"
 __mem__ = {}
 
 
-def from_2d(array_2d:List[List[Union[int,float,bool]]], dtype:Type=float, symbol:Optional[str]=None): return Matrix(array_2d,dtype=dtype,symbol=symbol)
+def from_2d(array_2d:List[List[Union[int,float,bool]]], dtype:Type=float, symbol:Optional[str]=None, overwrite:bool=False): return Matrix(array_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
-def from_1d(array_1d:List[Union[int,float,bool]], shape:Tuple[int,int], dtype:Type=float, symbol:Optional[str]=None):
+def from_1d(array_1d:List[Union[int,float,bool]], shape:Tuple[int,int], dtype:Type=float, symbol:Optional[str]=None, overwrite:bool=False):
     if len(array_1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array_1d)} != {shape[0] * shape[1]}")
     matrix_2d = []
     for i in range(shape[0]):
         row = array_1d[i * shape[1]:(i + 1) * shape[1]]
         matrix_2d.append(row)
-    return Matrix(matrix_2d,dtype=dtype,symbol=symbol)
+    return Matrix(matrix_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
 def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
     if axis not in [None,0,1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
@@ -101,12 +101,12 @@ def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
         elif axis == 1:
             if reference_row != other_row: raise ValueError("all matrices or lists must have the same number of rows to concatenate horizontally.")
             new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
-    return Matrix(new_matrix,symbol)
+    return Matrix(new_matrix, symbol=symbol)
 
 def arange(start:int, end:int, step:int=1, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
     if endpoint: end += 1
     if shape is None:  return Matrix([[x for x in range(start,end,step)]],symbol)
-    else: return Matrix([[x for x in range(start,end,step)]],symbol).reshape(shape)
+    else: return Matrix([[x for x in range(start,end,step)]], symbol=symbol).reshape(shape)
 
 def linspace(start:int, end:int, num:int=50, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
     if num <= 0: return Matrix([[]])
@@ -115,7 +115,7 @@ def linspace(start:int, end:int, num:int=50, endpoint:bool=False, shape:Optional
     linspace_values = [start + step * i for i in range(num)]
     if not endpoint: linspace_values = linspace_values[:-1]
     if shape is None: return Matrix([linspace_values],symbol)
-    return Matrix([linspace_values],symbol).reshape(shape)
+    return Matrix([linspace_values], symbol=symbol).reshape(shape)
 
 def add(matrices:List["Matrix"], symbol:Optional[str]=None):
     N = len(matrices)
@@ -123,7 +123,7 @@ def add(matrices:List["Matrix"], symbol:Optional[str]=None):
     elif N == 1: return matrices[0]
     result = matrices[0]
     for x in range(1,N): result = result + matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
+    if symbol is not None: result.update_symbol(symbol)
     return result
 
 def sub(matrices:List["Matrix"], symbol:Optional[str]=None):
@@ -193,7 +193,7 @@ def empty(symbol:Optional[str]=None): return Matrix([[]],symbol)
 
 def __fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None):
     # NOTE just a helper function
-    if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])],symbol = symbol)
+    if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])], symbol = symbol)
     raise ValueError("dimension must consist only number of rows and columns")
 
 def ones(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,1,symbol)
@@ -222,7 +222,7 @@ def identity(N:int, symbol:Optional[str]=None):
             if x == y: buffer.append(1)
             else: buffer.append(0)
         new_mat.append(buffer)
-    return Matrix(new_mat,symbol)
+    return Matrix(new_mat, symbol=symbol)
 
 def diagonal(value:int|float, N:int, symbol:Optional[str]=None): 
     new_mat = []
@@ -232,7 +232,7 @@ def diagonal(value:int|float, N:int, symbol:Optional[str]=None):
             if row == x: buffer.append(value)
             else: buffer.append(0)
         new_mat.append(buffer)
-    return Matrix(new_mat,symbol)
+    return Matrix(new_mat, symbol=symbol)
 
 def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None): 
     new_mat = []
@@ -241,14 +241,14 @@ def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None):
         buffer = []
         for _ in range(shape[1]): buffer.append(np.random.rand())
         new_mat.append(buffer)
-    return Matrix(new_mat,symbol)
+    return Matrix(new_mat, symbol=symbol)
 
 def read_csv(filename:str, symbol:Optional[str]):
     if not os.path.exists(filename): raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
     with open(filename,"r") as file:
         reader = csv.reader(file)
         data = [list(map(float,row)) for row in reader]
-    return Matrix(data,symbol)
+    return Matrix(data, symbol=symbol)
 
 def read_json(filename:str, symbol:Optional[str]=None):
     if not os.path.exists(filename): raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
@@ -257,7 +257,7 @@ def read_json(filename:str, symbol:Optional[str]=None):
         data = json.load(file)
         for x in range(len(data.keys())):
             new_mat.append(data[f"{x}"])
-    return Matrix(new_mat,symbol)
+    return Matrix(new_mat, symbol=symbol)
 
 def mem(): 
     string = ""
@@ -269,7 +269,7 @@ def from_symbol(symbol:str): return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self, array_2d:List[List[Union[int,float,bool]]], dtype:Optional[Type]=float, symbol:Optional[str]=None, overwrite:bool=False):
+    def __init__(self, array_2d:List[List[Union[int,float,bool]]], /, dtype:bool=float, symbol:Optional[str]=None, overwrite:bool=False):
         self.__check__(array_2d,dtype,symbol,overwrite)
         self.__matrix = array_2d
         self.__dtype = dtype
@@ -341,7 +341,7 @@ class Matrix:
             result += "\n]"
         return result
 
-    def __call__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} dtype={self.__dtype.__name__} symbol={self.__symbol}>"
+    def __call__(self): return f"<'Matrix' object at {hex(id(self))} dtype={self.__dtype.__name__} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
 
     def call(self): return self()
 
@@ -1155,7 +1155,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(np.random.rand())
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
     
     def zeros_like(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1163,7 +1163,7 @@ class Matrix:
             buffer = []
             for col in range(self.__col): buffer.append(0)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
     
     def ones_like(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1171,7 +1171,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(1)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
     
     def fill_like(self, value:Union[int,float,bool], symbol:Optional[str]=None):
         new_mat = []
@@ -1179,7 +1179,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(value)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def max_pooling(self, kernel_size:Tuple[int,int], stride:Tuple[int,int]=(1,1), symbol:Optional[str]=None):
         rows, cols = self.shape
@@ -1196,7 +1196,7 @@ class Matrix:
                 )
                 row.append(max_value)
             pooled_matrix.append(row)
-        return Matrix(pooled_matrix,symbol)
+        return Matrix(pooled_matrix, symbol=symbol)
 
     def min_pooling(self, kernel_size:Tuple[int,int], stride:Tuple[int,int]=(1,1), symbol:Optional[str]=None):
         rows, cols = self.shape
@@ -1213,7 +1213,7 @@ class Matrix:
                 )
                 row.append(min_value)
             pooled_matrix.append(row)
-        return Matrix(pooled_matrix,symbol)
+        return Matrix(pooled_matrix, symbol=symbol)
 
     def avg_pooling(self, kernel_size:Tuple[int,int], stride:Tuple[int,int]=(1,1), symbol:Optional[str]=None):
         rows, cols = self.shape
@@ -1231,7 +1231,7 @@ class Matrix:
                 avg_value = sum_value / (k_rows * k_cols)
                 row.append(avg_value)
             pooled_matrix.append(row)
-        return Matrix(pooled_matrix,symbol)
+        return Matrix(pooled_matrix, symbol=symbol)
 
     def astype(self, dtype:Type, inplace:bool=False):
         if inplace:
@@ -1244,10 +1244,10 @@ class Matrix:
                 buffer = []
                 for x in range(self.__col): buffer.append(dtype(self.__matrix[row][x]))
                 new_mat.append(buffer)
-            return Matrix(new_mat,dtype=dtype)
+            return Matrix(new_mat, dtype=dtype)
         else: raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
 
-    def copy(self, symbol:Optional[str]=None): return Matrix([row[:] for row in self.__matrix],symbol)
+    def copy(self, symbol:Optional[str]=None): return Matrix([row[:] for row in self.__matrix], symbol=symbol)
 
     def get(self, row:int, col:None|int=None):
         if col is None: return self.__matrix[row]
@@ -1279,7 +1279,7 @@ class Matrix:
                 new_matrix = [self.__matrix[row] + [other[row]] for row in range(self.__row)]
             else: raise ValueError("axis must be 0 (vertical) or 1 (horizontal)")
         else: raise TypeError(f"couldn't add `{type(other).__name__}` and `Matrix`, other must be `list` or `Matrix`")
-        return Matrix(new_matrix,symbol)
+        return Matrix(new_matrix, symbol=symbol)
 
     def to_json(self, file_path:str):
         if os.path.exists(file_path):
@@ -1326,7 +1326,7 @@ class Matrix:
                 total = 0
                 for row in range(self.__row): total += self.__matrix[row][x]
                 new_mat.append([total / self.__row])
-            return Matrix(new_mat,symbol)
+            return Matrix(new_mat,symbol=symbol)
         else: raise ValueError("invalid axis given!")
 
     def var(self, axis=None, sample=True, symbol:Optional[str]=None):
@@ -1354,7 +1354,7 @@ class Matrix:
                 for row in range(self.__row): total += (self.__matrix[row][x] - mean_matrix[x][0]) ** 2.0
                 if sample and self.__row > 1: new_mat.append([total / (self.__row - 1)])
                 else: new_mat.append([total / self.__row])
-            return Matrix(new_mat, symbol)
+            return Matrix(new_mat, symbol=symbol)
         else: raise ValueError("Invalid axis given!")
 
     def std(self, axis=None, sample=True, symbol:Optional[str]=None):
@@ -1378,7 +1378,7 @@ class Matrix:
                 if self.__col % 2 == 0: median_value = (sorted_row[mid - 1] + sorted_row[mid]) / 2.0
                 else: median_value = sorted_row[mid]
                 new_mat.append([median_value])
-            return Matrix(new_mat,symbol)
+            return Matrix(new_mat, symbol=symbol)
         elif axis == 0:
             new_mat = []
             for x in range(self.__col):
@@ -1388,7 +1388,7 @@ class Matrix:
                 if self.__row % 2 == 0: median_value = (sorted_col[mid - 1] + sorted_col[mid]) / 2.0
                 else: median_value = sorted_col[mid]
                 new_mat.append(median_value)
-            return Matrix([new_mat],symbol)
+            return Matrix([new_mat], symbol=symbol)
         else:
             raise ValueError("invalid axis given!")
 
@@ -1398,24 +1398,21 @@ class Matrix:
             for row in range(self.__row):
                 for x in range(self.__col):
                     value = self.__matrix[row][x]
-                    if result < value:
-                        result = value
+                    if result < value: result = value
             return result
         elif axis == 0:
             result = [-float("inf")] * self.__col
             for x in range(self.__col):
                 for row in range(self.__row):
                     value = self.__matrix[row][x]
-                    if result[x] < value:
-                        result[x] = value
+                    if result[x] < value: result[x] = value
             return result
         elif axis == 1:
             result = [-float("inf")] * self.__row
             for row in range(self.__row):
                 for x in range(self.__col):
                     value = self.__matrix[row][x]
-                    if result[row] < value:
-                        result[row] = value
+                    if result[row] < value: result[row] = value
             return result
         else:
             raise ValueError("invalid argument for axis it can either be None, 0 or 1")
@@ -1426,24 +1423,21 @@ class Matrix:
             for row in range(self.__row):
                 for x in range(self.__col):
                     value = self.__matrix[row][x]
-                    if result > value:
-                        result = value
+                    if result > value: result = value
             return result
         elif axis == 0:
             result = [float("inf")] * self.__col
             for x in range(self.__col):
                 for row in range(self.__row):
                     value = self.__matrix[row][x]
-                    if result[x] > value:
-                        result[x] = value
+                    if result[x] > value: result[x] = value
             return result
         elif axis == 1:
             result = [float("inf")] * self.__row
             for row in range(self.__row):
                 for x in range(self.__col):
                     value = self.__matrix[row][x]
-                    if result[row] > value:
-                        result[row] = value
+                    if result[row] > value: result[row] = value
             return result
         else:
             raise ValueError("invalid argument for axis it can either be None, 0 or 1")
@@ -1473,7 +1467,7 @@ class Matrix:
             new_mat = [[self.__matrix[row][col] for row in range(self.__row)] for col in range(self.__col)]
             sorted_mat = [sorted(col) for col in new_mat]
             transposed_sorted_mat = [[sorted_mat[col][row] for col in range(self.__col)] for row in range(self.__row)]
-            return Matrix(transposed_sorted_mat,symbol)
+            return Matrix(transposed_sorted_mat, symbol=symbol)
         raise ValueError("invalid axis given!")
 
     def sqrt(self, symbol:Optional[str]=None):
@@ -1482,7 +1476,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(self.__matrix[row][x] ** 0.5)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def cbrt(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1490,7 +1484,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(self.__matrix[row][x] ** (1/3))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def floor(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1503,7 +1497,7 @@ class Matrix:
                     if int(number) == number: buffer.append(number)
                     else: buffer.append(int(number) - 1)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat,  symbol=symbol)
 
     def ceil(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1514,15 +1508,15 @@ class Matrix:
                 if number == int(number): buffer.append(int(number))
                 else: buffer.append(int(number) + 1 if number > 0 else int(number))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
-    def scale(self, scalar, symbol:Optional[str]=None):
+    def scale(self, scalar:Union[int,float], symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col): buffer.append(self.__matrix[row][x] * scalar)
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def log(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1530,7 +1524,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(np.log10(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def ln(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1538,7 +1532,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(np.log(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def sin(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1546,7 +1540,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(np.sin(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def cos(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1554,7 +1548,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def tan(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1570,7 +1564,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(1 / np.cos(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def cosec(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1579,7 +1573,7 @@ class Matrix:
             for x in range(self.__col):
                 buffer.append(1 / np.sin(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def cot(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1587,7 +1581,7 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(1 / np.tan(self.__matrix[row][x]))
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def exp(self, symbol:Optional[str]=None):
         E = 2.7182818284590452353602874713527
@@ -1596,17 +1590,17 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(E ** self.__matrix[row][x])
             new_mat.append(buffer)
-        return Matrix(new_mat,symbol)
+        return Matrix(new_mat, symbol=symbol)
 
     def eigen(self, symbol:Optional[str]=None):
         if not self.is_square(): raise ValueError("eigen values and its vectors are defined only for square matrices")
         value,vec = np.linalg.eig(self.numpy())
-        return value,Matrix(vec.tolist(),symbol)
+        return value,Matrix(vec.tolist(), symbol=symbol)
 
     def cofactor(self, i, j, symbol:Optional[str]=None):
         sub_matrix = [row[:j] + row[j + 1:] for row in (self.__matrix[:i] + self.__matrix[i + 1:])]
         sign = (-1) ** (i + j)
-        return sign * Matrix(sub_matrix,symbol).det()
+        return sign * Matrix(sub_matrix, symbol=symbol).det()
 
     def row_matrix(self): return self.__col == 1
 
@@ -1614,7 +1608,7 @@ class Matrix:
     
     def minor(self, i, j, symbol:Optional[str]=None):
         sub_matrix = [row[:j] + row[j+1:] for row in (self.__matrix[:i] + self.__matrix[i+1:])]
-        return Matrix(sub_matrix,symbol).det()
+        return Matrix(sub_matrix, symbol=symbol).det()
 
     def det(self):
         if not self.is_square(): raise ValueError("determinant is defined only for square matrices")
@@ -1660,7 +1654,7 @@ class Matrix:
     def adjoint(self, symbol:Optional[str]=None):
         if not self.is_square(): raise ValueError("adjoint is defined only for square matrices")
         cofactors = [[self.cofactor(i,j) for j in range(self.__col)] for i in range(self.__row)]
-        return Matrix(cofactors,symbol).T
+        return Matrix(cofactors, symbol=symbol).T
 
     def trace(self):
         if not self.is_square(): raise ValueError("given matrix must be a square matrix number of rows and columns must be the same")
@@ -1674,7 +1668,7 @@ class Matrix:
 
     def flatten(self, symbol:Optional[str]=None):
         flattened = [item for row in self.__matrix for item in row]
-        return Matrix([flattened],symbol = symbol)
+        return Matrix([flattened], symbol=symbol)
 
     def reshape(self, shape:Tuple[int,int], symbol:Optional[str]=None):
         total_elements = self.__row * self.__col
@@ -1685,7 +1679,7 @@ class Matrix:
             row = []
             for j in range(shape[1]): row.append(flattened[i * shape[1] + j])
             reshaped.append(row)
-        return Matrix(reshaped,symbol)
+        return Matrix(reshaped, symbol=symbol)
 
     def lu_decomposition(self):
         if not self.is_square(): raise ValueError("LU decomposition is only defined for square matrices")
@@ -1734,7 +1728,7 @@ class Matrix:
                 sum_k = sum(L[i][k] * L[j][k] for k in range(j))
                 if i == j: L[i][j] = np.sqrt(dense[i][i] - sum_k)
                 else: L[i][j] = (dense[i][j] - sum_k) / L[j][j]
-        return Matrix(L.tolist(),symbol)
+        return Matrix(L.tolist(), symbol=symbol)
 
     def rank(self):
         mat = self.__matrix.copy()
@@ -1753,7 +1747,7 @@ class Matrix:
                     for k in range(i,self.__col): mat[j][k] -= factor * mat[i][k]
         return rank
 
-    def heatmap(self, title="Matrix HeatMap", cmap="viridis"):
+    def heatmap(self, title:str="Matrix HeatMap", cmap:str="viridis"):
         plt.figure(figsize = (8,6))
         sns.heatmap(self.__matrix,annot = True,fmt = "d",cmap = cmap,cbar = True)
         plt.title(title)
@@ -1761,7 +1755,7 @@ class Matrix:
         plt.ylabel("Rows")
         plt.show()
 
-    def graph(self, title="Graph Visualization of Matrix"):
+    def graph(self, title:str="Graph Visualization of Matrix"):
         G = netx.Graph()
         for row in range(self.__row):
             for x in range(self.__col):
