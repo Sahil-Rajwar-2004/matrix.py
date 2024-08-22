@@ -9,10 +9,10 @@ from matrix import Matrix
 x = Matrix([[1,2,3],[4,5,6]], dtype=int)                      # default symbol = None
 y = Matrix([[2,3,4],[5,6,7]], dtype=float, symbol="A")
 
-print(x())                                                   # <'Matrix' object at 0x7fdfc2d87fa0 size=6 shape=(2, 3) dtype=float symbol=None>
-print(y())                                                   # <'Matrix' object at 0x7fb588637f10 size=6 shape=(2, 3) dtype=float  symbol=A>
+print(x())                                                   # <'Matrix' object at 0x7fdfc2d87fa0 dtype=int size=6 shape=(2, 3) symbol=None>
+print(y())                                                   # <'Matrix' object at 0x7fb588637f10 dtype=float size=6 shape=(2, 3) symbol=A>
 print(x.numpy())                                             # array([[1, 2, 3], [4, 5, 6]])
-print((x + y)())                                             # <'Matrix' object at 0x7fb544042140 size=6 shape=(2, 3) dtype=float symbol=None>
+print((x + y)())                                             # <'Matrix' object at 0x7fb544042140 dtype=float size=6 shape=(2, 3) symbol=None>
 print(x + y)
 
 # Output
