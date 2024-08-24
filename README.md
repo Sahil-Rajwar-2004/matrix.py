@@ -6,7 +6,7 @@
 ```python
 from matrix import Matrix
 
-x = Matrix([[1,2,3],[4,5,6]], dtype=int)                      # default symbol = None
+x = Matrix([[1,2,3],[4,5,6]], dtype=int)                     # default symbol = None
 y = Matrix([[2,3,4],[5,6,7]], dtype=float, symbol="A")
 
 print(x())                                                   # <'Matrix' object at 0x7fdfc2d87fa0 dtype=int size=6 shape=(2, 3) symbol=None>
@@ -50,3 +50,15 @@ pwsh install.ps1
 ```bash
 bash install.sh
 ```
+
+
+## Contributing
+I am currently the sole developer and maintainer of this project. While contributions are welcome, please reach out before starting any major work to ensure that your ideas align with the project's goals. You can open a discussion or contact me directly through the repository.
+
+
+## Reporting Issues
+If you encounter any issues or bugs while using the library, please report them by opening an issue on the [GitHub repository](https://github.com/Sahil-Rajwar-2004/matrix.py/issues). Include a detailed description of the problem, steps to reproduce it, and any relevant error messages or screenshots.
+
+
+## License
+This project is licensed under the MIT License. See the [LICENSE](https://github.com/Sahil-Rajwar-2004/matrix.py/blob/master/LICENSE) file for more information.
