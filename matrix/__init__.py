@@ -62,7 +62,7 @@ import json
 import csv
 import os
 
-version = "0.7.0"
+version = "0.7.1"
 __mem__ = {}
 
 
@@ -285,24 +285,35 @@ class Matrix:
                 __mem__ = {}
             __mem__[self.__symbol] = self()
 
-    def __check__(self, array_2d:List[List[Union[int,float,bool,complex]]], dtype:Type, symbol:Optional[str]=None, overwrite:bool=False):
-        num_elements_in_first_row = len(array_2d[0])
-        for i,row in enumerate(array_2d):
-            if len(row) != num_elements_in_first_row: raise ValueError(f"row {i+1} does not have the same number of elements as the first row")
-            for element in row:
-                if not isinstance(element,(int,float,bool,complex)): raise TypeError(f"element {element} in row {i+1} is not an int or float")
-        if dtype in [int,float,bool,complex]:
-            for idx1,row in enumerate(array_2d):
-                for idx2,x in enumerate(row):
-                    try:
-                        if dtype is bool: array_2d[idx1][idx2] = bool(x)
-                        else: array_2d[idx1][idx2] = dtype(x)
-                    except (ValueError,TypeError): raise TypeError(f"Cannot convert element {x} at position {idx1+1},{idx2+1} to dtype `{dtype.__name__}`")
+    def __check__(self, array2d:List[List[Union[int,float,bool,complex]]], dtype:Type, symbol:Optional[str]=None, overwrite:bool=False):
+        no_rows = len(array2d[0])
+        for index,row in enumerate(array2d):
+            if len(row) != no_rows: raise ValueError(f"row {index+1} doesn't have the same number of elements as the first row")
+            for elem in row:
+                if isinstance(elem,str): raise TypeError(f"element '{elem}' in row {index+1} with data type '{type(elem).__name__}' isn't compatible with 'Matrix'")
+        if dtype:
+            for idx1,row in enumerate(array2d):
+                for idx2,x in enumerate(row): array2d[idx1][idx2] = dtype(x)
+        else: raise TypeError(f"Cannot convert element {x} at position {idx1+1},{idx2+1} to dtype `{dtype.__name__}`")
         if symbol is not None and not isinstance(symbol,str): raise ValueError(f"Symbol must be a string or None, not '{type(symbol).__name__}'.")
         if symbol is not None and not symbol in globals().get("__mem__",{}) and overwrite is True:
             del __mem__[symbol]
             __mem__[symbol] = self()
         if symbol is not None and symbol in globals().get("__mem__",{}) and overwrite is False: raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
+
+    def __res_dtype__(self, other):
+        if not isinstance(other, Matrix):
+            if self.__dtype == complex or type(other) == complex: return complex
+            elif self.__dtype == bool and type(other) == bool: return bool
+            elif (self.__dtype == int and type(other) == float) or (self.__dtype == float and type(other) == int): return float
+            elif (self.__dtype == bool and type(other) == int) or (self.__dtype == int and type(other) == bool): return int
+            else: return float
+        else:
+            if self.__dtype == complex or other.__dtype == complex: return complex
+            elif self.__dtype == bool and other.__dtype == bool: return bool
+            elif (self.__dtype == int and other.__dtype == float) or (self.__dtype == float and other.__dtype == int): return float
+            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): return int
+            else: return float
 
     def __iter__(self):
         self.__iter_index = 0
@@ -382,13 +393,9 @@ class Matrix:
     def __setitem__(self, indices, value):
         if isinstance(indices,tuple):
             row,col = indices
-            if isinstance(value,(int,float,bool,complex)): self.__matrix[row][col] = value
+            if not isinstance(value,str): self.__matrix[row][col] = value
             else: raise TypeError("expected value to be an int or float")
-            if type(value) == complex or self.__dtype == complex: self.astype(complex, inplace=True)
-            elif type(value) == bool and self.__dtype == bool: self.astype(bool, inplace=True)
-            elif (type(value) == int and self.__dtype == bool) or (type(value) == bool and self.__dtype == int): self.astype(int, inplace=True)
-            elif type(value) == int and self.__dtype == int: self.astype(int, inplace=True)
-            else: self.astype(float, inplace=True)
+            self.astype(self.__res_dtype__(value), inplace=True)
         else:
             row = indices
             if isinstance(value,list):
@@ -433,135 +440,76 @@ class Matrix:
     def numpy(self): return np.array(self.__matrix)
 
     def __add__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
-            for row in self.__matrix:
-                buffer = []
-                for x in row: buffer.append(x + other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
-            new_mat = []
-            if self.shape != other.shape:
-                raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] + other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for +: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] + other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __radd__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other + self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype) 
-        raise TypeError(f"unsupported operand type for +: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other + self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __sub__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
-            for row in self.__matrix:
-                buffer = []
-                for x in row: buffer.append(x - other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
-            new_mat = []
-            if self.shape != other.shape:
-                raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] - other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for -: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] - other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rsub__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other - self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupoorted operand type for -: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other - self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __mul__(self, other):
-        if isinstance(other,(int,float,float,complex)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
-            for row in self.__matrix:
-                buffer = []
-                for x in row: buffer.append(x * other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
-            new_mat = []
-            if self.__shape != other.__shape: raise ValueError(f"shape of matrices should be equal `{self.__shape}` != `{other.__shape}`")
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] * other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for *: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] * other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rmul__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other * self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for *: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other * self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __matmul__(self, other):
         if not isinstance(other,Matrix): raise TypeError(f"multiplication is only supported between two matrices, not between a matrix and {type(other).__name__}")
@@ -570,179 +518,103 @@ class Matrix:
         for i in range(self.__row):
             for j in range(other.__col):
                 for k in range(self.__col): result_matrix[i][j] += self.__matrix[i][k] * other.__matrix[k][j]
-        if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-        elif self.__dtype == int and other.__dtype == int: result_dtype = int
-        elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-        elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-        else: result_dtype = float
-        return Matrix(result_matrix, dtype=result_dtype)
+        return Matrix(result_matrix, dtype=self.__res_dtype__(other))
 
     def __truediv__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] / other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError(f"shape of the matrices must be the same")
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] / other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        else: raise TypeError(f"unsupported operand type for /: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] / other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rtruediv__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other / self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for /: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other / self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __floordiv__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] // other)
-                new_mat.append(buffer)
-            if type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError(f"shape of the matrices must be the same")
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] // other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        else: raise TypeError(f"unsupported operand type for //: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] // other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rfloordiv__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other // self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for //: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+           buffer = []
+           for x in range(self.__col): buffer.append(other // self.__matrix[row][x])
+           new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __pow__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] ** other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] ** other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        else: raise TypeError(f"unsupported operand type for **: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] ** other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rpow__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other ** self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for **: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other ** self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __mod__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] % other)
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        elif isinstance(other,Matrix):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] % other.__matrix[row][x])
                 new_mat.append(buffer)
-            if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-            elif self.__dtype == int and other.__dtype == int: result_dtype = int
-            elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        else: raise TypeError(f"unsupported operand type for %: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=self.__res_dtype__(other))
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] % other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __rmod__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other % self.__matrix[row][x])
-                new_mat.append(buffer)
-            if type(other) == complex or self.__dtype == complex: result_dtype = complex
-            elif type(other) == int and self.__dtype == int: result_dtype = int
-            elif type(other) == bool and self.__dtype == bool: result_dtype = bool
-            elif (type(other) == int and self.__dtype == bool) or (type(other) == bool and self.__dtype == int): result_dtype = int
-            else: result_dtype = float
-            return Matrix(new_mat, dtype=result_dtype)
-        raise TypeError(f"unsupported operand type for %: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other % self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other))
 
     def __pos__(self): return Matrix(self.__matrix, dtype=self.__dtype)
 
@@ -756,55 +628,52 @@ class Matrix:
         return Matrix(new_mat, dtype=self.__dtype)
 
     def __and__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] & other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] & other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    buffer.append(self.__matrix[row][x] & other.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        else: raise TypeError(f"unsupported operand type for &: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=int)
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] & other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
         
     def __rand__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other & self.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for &: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other & self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __or__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] | other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] | other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
-        else: raise TypeError(f"unsupported operand type for |: {type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=int)
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] | other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __ror__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other | self.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for |: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other | self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __invert__(self):
         new_mat = []
@@ -812,227 +681,175 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(~self.__matrix[row][x])
             new_mat.append(buffer)
-        return Matrix(new_mat)
+        return Matrix(new_mat, dtype=int)
 
     def __xor__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] ^ other)
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("shape of the matrices must be equal")
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] ^ other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat)
-        else: raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=int)
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] ^ other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __rxor__(self, other):
-        if isinstance(other,(int,float,bool)):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other ^ self.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for ^: `{type(other).__name__}` and `Matrix`")
-    
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other ^ self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
+
     def __lshift__(self, other):
-        if isinstance(other,int):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] << other)
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        elif isinstance(other,Matrix):
-            if self.__dtype != int or other.__dtype != int: raise TypeError("bit shift operations only possible for 'int' data type matrices")
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
                 for x in range(self.__col): buffer.append(self.__matrix[row][x] << other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for <<: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=int)
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] << other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
     
     def __rlshift__(self, other):
-        if isinstance(other,int):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other << self.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for <<: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other << self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __rshift__(self, other):
-        if isinstance(other,int):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] >> other)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] >> other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat)
-        elif isinstance(other,Matrix):
-            if self.__dtype != int or other.__dtype != int: raise TypeError("bit shift operation only possible for 'int' data type matrices")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(self.__matrix[row][x] >>  other.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for >>: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=int)
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] >> other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
     
     def __rrshift__(self, other):
-        if isinstance(other,int):
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col): buffer.append(other >> self.__matrix[row][x])
-                new_mat.append(buffer)
-            return Matrix(new_mat)
-        raise TypeError(f"unsupported operand type for >>: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(other >> self.__matrix[row][x])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int)
 
     def __eq__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__matrix} != {other.__matrix}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] == other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] == other.__matrix[row][x])
                 new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] == other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for ==: `{type(other).__name__}` and `Matrix`")
+            return Matrix(new_mat, dtype=bool) 
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] == other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
 
     def __ne__(self, other):
-        if isinstance(other,(int,float,bool,complex)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] != other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] != other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] != other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for !=: {type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] != other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
         
     def __lt__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] < other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] < other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            if self.__dtype == complex or other.__dtype == complex: raise TypeError("'<' operation not supported on matrices with complex datatypes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] < other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for <: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] < other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
         
     def __gt__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] > other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] > other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            if self.__dtype == complex or other.__dtype == complex: raise TypeError("'>' operation not supported on matrices with complex datatypes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] > other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for >:`{type(other).__name__}` and `Matrix`")
-
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] > other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
+        
     def __le__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] <= other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] <= other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            if self.__dtype == complex or other.__dtype == complex: raise TypeError("'<=' operation not supported on matrices with complex datatypes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] <= other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for <=: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] <= other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
 
     def __ge__(self, other):
-        if isinstance(other,(int,float,bool)):
+        if isinstance(other,Matrix):
+            if self.__shape != other.__shape: raise ValueError(f"the shape of the matrices must be the same, {self.__shape} != {other.__shape}")
             new_mat = []
             for row in range(self.__row):
                 buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] >= other: buffer.append(True)
-                    else: buffer.append(False)
+                for x in range(self.__col): buffer.append(self.__matrix[row][x] >= other.__matrix[row][x])
                 new_mat.append(buffer)
             return Matrix(new_mat, dtype=bool)
-        elif isinstance(other,Matrix):
-            if self.__shape != other.__shape: raise ValueError("can't compare two matrices with different shapes")
-            if self.__dtype == complex or other.__dtype == complex: raise TypeError("'>=' operation not supported on matrices with complex datatypes")
-            new_mat = []
-            for row in range(self.__row):
-                buffer = []
-                for x in range(self.__col):
-                    if self.__matrix[row][x] >= other.__matrix[row][x]: buffer.append(True)
-                    else: buffer.append(False)
-                new_mat.append(buffer)
-            return Matrix(new_mat, dtype=bool)
-        else: raise TypeError(f"unsupported operand type for >=: `{type(other).__name__}` and `Matrix`")
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(self.__matrix[row][x] >= other)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool)
 
     def hstack(self, other:"Matrix", symbol:Optional[str]=None):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
@@ -1041,12 +858,7 @@ class Matrix:
         for row in range(self.__row):
             buffer = self.__matrix[row] + other.__matrix[row]
             new_mat.append(buffer)
-        if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-        elif self.__dtype == int and other.__dtype == int: result_dtype = int
-        elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-        elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-        else: result_dtype = float
-        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other), symbol=symbol)
 
     def vstack(self, other:"Matrix", symbol:Optional[str]=None):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
@@ -1054,12 +866,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row): new_mat.append(self.__matrix[row])
         for row in range(other.__row): new_mat.append(other.__matrix[row])
-        if self.__dtype == complex or other.__dtype == complex: result_dtype = complex
-        elif self.__dtype == int and other.__dtype == int: result_dtype = int
-        elif self.__dtype == bool and other.__dtype == bool: result_dtype = bool
-        elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): result_dtype = int
-        else: result_dtype = float
-        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+        return Matrix(new_mat, dtype=self.__res_dtype__(other), symbol=symbol)
 
     def append(self, array1d:List[Union[int,float,bool,complex]], axis:int=0, index:int=0):
         if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
@@ -1071,11 +878,7 @@ class Matrix:
             if len(array1d) != self.__row: raise ValueError(f"length of the column to append ({len(array1d)}) must match the number of rows ({self.__row})")
             for x in range(self.__row): self.__matrix.insert(index,array1d)
             self.__col += 1
-        if self.__dtype == complex or type(array1d[0]) == complex: self.astype(complex, inplace=True)
-        elif self.__dtype == int and type(array1d[0]) == int: self.astype(int, inplace=True)
-        elif self.__dtype == bool and type(array1d[0]) == bool: self.astype(bool, inplace=True)
-        elif (self.__dtype == int and type(array1d[0]) == bool) or (self.__dtype == bool and type(array1d[0]) == int): self.astype(int, inplace=True)
-        else: self.astype(float, inplace=True)
+        self.astype(dtype=self.__res_dtype__(array1d[0]), inplace=True)
         self.__shape = (self.__row,self.__col)
         self.__size = self.__row * self.__col
     
@@ -1102,11 +905,7 @@ class Matrix:
             if len(array1d) != self.__row: raise ValueError(f"length of the new column ({len(array1d)}) must match the number of rows ({self.__row})")
             if not 0 <= index < self.__col: raise IndexError(f"col index {index} is out of bounds")
             for x in range(self.__row): self.__matrix[x][index] = array1d[x]
-        if self.__dtype == complex or type(array1d[0]) == complex: self.astype(complex, inplace=True)
-        elif self.__dtype == int and type(array1d[0]) == int: self.astype(int ,inplace=True)
-        elif self.__dtype == bool and type(array1d[0]) == bool: self.astype(bool, inplace=True)
-        elif (self.__dtype == int and type(array1d[0]) == bool) or (self.__dtype == bool and type(array1d[0]) == int): self.astype(int, inplace=True)
-        else: self.astype(float, inplace=True)
+        self.astype(self.__res_dtype__(array1d[0]), inplace=True)
 
     def cumsum(self, axis:Union[int,None]=None, symbol:Optional[str]=None):
         if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
@@ -1133,11 +932,7 @@ class Matrix:
                     cumulative_sum += element
                     row_cumsum.append(cumulative_sum)
                 result_matrix.append(row_cumsum)
-        if self.__dtype == complex: result_dtype = complex
-        elif self.__dtype == int: result_dtype = int
-        elif self.__dtype == bool: result_dtype = int
-        else: result_dtype = float
-        return Matrix(result_matrix, dtype=result_dtype, symbol=symbol)
+        return Matrix(result_matrix, dtype=self.__dtype, symbol=symbol)
     
     def cumprod(self, axis:Union[int,None]=None, symbol:Optional[str]=None):
         if axis not in [None,0,1]: raise ValueError("axis must be None, 0 (row-wise) and 1 (column-wise)")
@@ -1165,11 +960,7 @@ class Matrix:
                     cumulative_product *= element
                     row_cumprod.append(cumulative_product)
                 result_matrix.append(row_cumprod)
-        if self.__dtype == complex: result_dtype = complex
-        elif self.__dtype == int: result_dtype = int
-        elif self.__dtype == bool: result_dtype = int
-        else: result_dtype = float
-        return Matrix(result_matrix, dtype=result_dtype, symbol=symbol)
+        return Matrix(result_matrix, dtype=self.__dtype, symbol=symbol)
         
     def gradient(self, axis:int=0):
         if axis not in [0,1]: raise ValueError("axis must be 0 (row-wise) and 1 (column-wise)")
@@ -1193,7 +984,31 @@ class Matrix:
                     grad_row.append(grad_val)
                 grad.append(grad_row)
         return grad
-    
+
+    def sigmoid(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append((1 + self.__exp(-self.__matrix[row][x])) ** -1)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def relu(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(max(0,self.__matrix[row][x]))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def softplus(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(np.log1p(np.exp(self.__matrix[row][x])))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
     def softmax(self, axis:int=0, symbol:Optional[str]=None):
         if axis not in [0,1]: raise ValueError("axis must be 0 (row-wise) and 1 (column-wise)")
         softmax_matrix = []
@@ -1408,15 +1223,15 @@ class Matrix:
 
     def set(self, row:int, value:List[Union[int,float,bool,complex]] | int | float, col:None|int=None):
         if col is None:
-            if isinstance(value,list) and len(value) == self.__col:
+            if isinstance(value, list):
+                if len(value) != self.__col: raise ValueError(f"length of value list ({len(value)}) does not match number of columns ({self.__col})")
                 self.__matrix[row] = value
-                return
-            raise TypeError(f"can't set `{type(value).__name__}` to matrix row")
-        else: self.__matrix[row][col] = value
-        if type(value) == complex or self.__dtype == complex: self.astype(complex, inplace=True)
-        elif type(value) == bool and self.__dtype == bool: self.astype(bool, inplace=True)
-        elif (type(value) == int and self.__dtype == bool) or (type(value) == bool and self.__dtype == int): self.astype(int, inplace=True)
-        else: self.astype(float, inplace=True)
+                self.astype(dtype=self.__res_dtype__(value[0]), inplace=True)
+            else: raise TypeError(f"expected list for row setting, got `{type(value).__name__}`")
+        else:
+            if not (0 <= col < self.__col): raise IndexError(f"column index {col} out of range (0 to {self.__col-1})")
+            self.__matrix[row][col] = value
+            self.astype(dtype=self.__res_dtype__(value), inplace=True)
 
     def concatenate(self, other:Union["Matrix",List], axis:int=0, symbol:Optional[str]=None):
         if isinstance(other,Matrix):
@@ -1436,7 +1251,8 @@ class Matrix:
                 new_matrix = [self.__matrix[row] + [other[row]] for row in range(self.__row)]
             else: raise ValueError("axis must be 0 (vertical) or 1 (horizontal)")
         else: raise TypeError(f"couldn't add `{type(other).__name__}` and `Matrix`, other must be `list` or `Matrix`")
-        return Matrix(new_matrix, symbol=symbol)
+        if isinstance(other,Matrix): return Matrix(new_matrix, dtype=self.__res_dtype__(other), symbol=symbol)
+        return Matrix(new_matrix, dtype=self.__res_dtype__(other[0]), symbol=symbol)
 
     def to_json(self, file_path:str):
         if os.path.exists(file_path):
@@ -1679,77 +1495,156 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(self.__matrix[row][x] * scalar)
             new_mat.append(buffer)
-        if self.__dtype == complex or type(scalar) == complex: result_dtype = complex
-        elif self.__dtype == int and type(scalar) == int: result_dtype = int
-        elif self.__dtype == bool and type(scalar) == bool: result_dtype = bool
-        elif (self.__dtype == bool and type(scalar) == int) or (self.__dtype == int and type(scalar) == bool): result_dtype = int
-        else: result_dtype = float
-        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+        return Matrix(new_mat, dtype=self.__res_dtype__(scalar), symbol=symbol)
 
     def log(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.log10(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.log10(self.__matrix[row][x])))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def ln(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.log(self.__matrix[row][x]))
-            new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+            for x in range(self.__col): buffer.append(float(np.log(self.__matrix[row][x])))
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def sin(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.sin(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.sin(self.__matrix[row][x])))
             new_mat.append(buffer)
-        return Matrix(new_mat, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def cos(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.cos(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.cos(self.__matrix[row][x])))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def tan(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.tan(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.tan(self.__matrix[row][x])))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def sec(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(1 / np.cos(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.cos(self.__matrix[row][x] ** -1)))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def cosec(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(1 / np.sin(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.sin(self.__matrix[row][x] ** -1)))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def cot(self, symbol:Optional[str]=None):
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(1 / np.tan(self.__matrix[row][x]))
+            for x in range(self.__col): buffer.append(float(np.tan(self.__matrix[row][x] ** -1)))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+
+    def asin(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.arcsin(self.__matrix[row][x])))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = float
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+
+    def sinh(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.sinh(self.__matrix[row][x])))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+
+    def cosh(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__row): buffer.append(float(np.cosh(self.__matrix[row][x])))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+
+    def tanh(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.tanh(self.__matrix[row][x])))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+    
+    def sech(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.cosh(self.__matrix[row][x] ** -1)))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = complex
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+    
+    def cosech(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.sinh(self.__matrix[row][x] ** -1)))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+    
+    def coth(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(float(np.tanh(self.__matrix[row][x] ** -1)))
+            new_mat.append(buffer)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def exp(self, symbol:Optional[str]=None):
         E = 2.7182818284590452353602874713527
@@ -1758,7 +1653,9 @@ class Matrix:
             buffer = []
             for x in range(self.__col): buffer.append(E ** self.__matrix[row][x])
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        if self.__dtype == complex: result_dtype = complex
+        else: result_dtype = float
+        return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
 
     def eigen(self, symbol:Optional[str]=None):
         if not self.is_square(): raise ValueError("eigen values and its vectors are defined only for square matrices")
