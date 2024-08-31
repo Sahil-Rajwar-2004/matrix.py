@@ -62,13 +62,24 @@ import json
 import csv
 import os
 
-version = "0.7.1"
+version = "0.7.2"
 __mem__ = {}
 
 
-def from_2d(array_2d:List[List[Union[int,float,bool,complex]]], dtype:Type, symbol:Optional[str]=None, overwrite:bool=False): return Matrix(array_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
+def from_2d(
+        array_2d:List[List[Union[int,float,bool,complex]]],
+        dtype:Type,
+        symbol:Optional[str]=None,
+        overwrite:bool=False
+    ): return Matrix(array_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
-def from_1d(array_1d:List[Union[int,float,bool,complex]], shape:Tuple[int,int], dtype:Type, symbol:Optional[str]=None, overwrite:bool=False):
+def from_1d(
+        array_1d:List[Union[int,float,bool,complex]],
+        shape:Tuple[int,int],
+        dtype:Type,
+        symbol:Optional[str]=None,
+        overwrite:bool=False
+    ):
     if len(array_1d) != shape[0] * shape[1]: raise ValueError(f"Can't create a matrix with shape {shape}, {len(array_1d)} != {shape[0] * shape[1]}")
     matrix_2d = []
     for i in range(shape[0]):
@@ -76,7 +87,11 @@ def from_1d(array_1d:List[Union[int,float,bool,complex]], shape:Tuple[int,int], 
         matrix_2d.append(row)
     return Matrix(matrix_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
-def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
+def concatenate(
+        matrices:List["Matrix"],
+        axis:int=0,
+        symbol:Optional[str]=None
+    ):
     if axis not in [None,0,1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
     if not matrices: raise ValueError("at least one matrix or list is required for concatenation.")
     first_matrix = matrices[0]
@@ -103,12 +118,26 @@ def concatenate(matrices:List["Matrix"], axis:int=0, symbol:Optional[str]=None):
             new_matrix = [new_matrix[row] + other_matrix[row] for row in range(reference_row)]
     return Matrix(new_matrix, symbol=symbol)
 
-def arange(start:int, end:int, step:int=1, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
+def arange(
+        start:int,
+        end:int,
+        step:int=1,
+        endpoint:bool=False,
+        shape:Optional[Tuple[int,int]]=None,
+        symbol:Optional[str]=None
+    ):
     if endpoint: end += 1
     if shape is None:  return Matrix([[x for x in range(start,end,step)]],symbol)
     else: return Matrix([[x for x in range(start,end,step)]], symbol=symbol).reshape(shape)
 
-def linspace(start:int, end:int, num:int=50, endpoint:bool=False, shape:Optional[Tuple[int,int]]=None, symbol:Optional[str]=None):
+def linspace(
+        start:int,
+        end:int,
+        num:int=50,
+        endpoint:bool=False,
+        shape:Optional[Tuple[int,int]]=None,
+        symbol:Optional[str]=None
+    ):
     if num <= 0: return Matrix([[]])
     if endpoint: step = (end - start) / (num - 1)
     else: step = (end - start) / num
@@ -117,7 +146,10 @@ def linspace(start:int, end:int, num:int=50, endpoint:bool=False, shape:Optional
     if shape is None: return Matrix([linspace_values],symbol)
     return Matrix([linspace_values], symbol=symbol).reshape(shape)
 
-def add(matrices:List["Matrix"], symbol:Optional[str]=None):
+def add(
+        matrices:List["Matrix"],
+        symbol:Optional[str]=None
+    ):
     N = len(matrices)
     if N == 0: raise ValueError("the list of matrices is empty")
     elif N == 1: return matrices[0]
@@ -224,7 +256,11 @@ def identity(N:int, symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=int,symbol=symbol)
 
-def diagonal(value:int|float, N:int, symbol:Optional[str]=None): 
+def diagonal(
+        value:int|float,
+        N:int,
+        symbol:Optional[str]=None
+    ): 
     new_mat = []
     for row in range(N):
         buffer = []
@@ -234,7 +270,11 @@ def diagonal(value:int|float, N:int, symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=type(value), symbol=symbol)
 
-def rand(shape:Tuple[int,int], seed:None|int=None, symbol:Optional[str]=None): 
+def rand(
+        shape:Tuple[int,int],
+        seed:None|int=None,
+        symbol:Optional[str]=None
+    ): 
     new_mat = []
     if seed is not None: np.random.seed(seed)
     for _ in range(shape[0]):
@@ -269,7 +309,14 @@ def from_symbol(symbol:str): return __mem__[symbol]
 
 
 class Matrix:
-    def __init__(self, array_2d:List[List[Union[int,float,bool,complex]]], /, dtype:Type, symbol:Optional[str]=None, overwrite:bool=False):
+    def __init__(
+            self,
+            array_2d:List[List[Union[int,float,bool,complex]]],
+            /,
+            dtype:Type,
+            symbol:Optional[str]=None,
+            overwrite:bool=False
+        ):
         self.__check__(array_2d,dtype,symbol,overwrite)
         self.__matrix = array_2d
         self.__dtype = dtype
@@ -285,7 +332,13 @@ class Matrix:
                 __mem__ = {}
             __mem__[self.__symbol] = self()
 
-    def __check__(self, array2d:List[List[Union[int,float,bool,complex]]], dtype:Type, symbol:Optional[str]=None, overwrite:bool=False):
+    def __check__(
+            self,
+            array2d:List[List[Union[int,float,bool,complex]]],
+            dtype:Type,
+            symbol:Optional[str]=None,
+            overwrite:bool=False
+        ):
         no_rows = len(array2d[0])
         for index,row in enumerate(array2d):
             if len(row) != no_rows: raise ValueError(f"row {index+1} doesn't have the same number of elements as the first row")
@@ -326,6 +379,8 @@ class Matrix:
             self.__iter_index += 1
             return self.__matrix[row][col]
         else: raise StopIteration
+
+    def info(self): return {"shape":self.__shape, "size":self.__size, "dtype":self.__dtype, "symbol":self.__symbol}
 
     # def __repr__(self): return f"<'Matrix' object at {hex(id(self))} size={self.__size} shape={self.__shape} symbol={self.__symbol}>"
 
