@@ -7,7 +7,7 @@
 from matrix import Matrix
 
 x = Matrix([[1,2,3],[4,5,6]], dtype=int)                     # default symbol = None
-y = Matrix([[2,3,4],[5,6,7]], dtype=float, symbol="A")
+y = Matrix([[2,3,4],[5,6,7]], symbol="A")                    # default dtype = float
 
 print(x())                                                   # <'Matrix' object at 0x7fdfc2d87fa0 dtype=int size=6 shape=(2, 3) symbol=None>
 print(y())                                                   # <'Matrix' object at 0x7fb588637f10 dtype=float size=6 shape=(2, 3) symbol=A>
@@ -18,8 +18,8 @@ print(x + y)
 # Output
 """
 Matrix([
-    [ 3.0,  5.0,  7.0],
-    [ 9.0, 11.0, 13.0]
+    [ 3.00000,  5.00000,  7.00000],
+    [ 9.00000, 11.00000, 13.00000]
 ], dtype=float, symbol=None, shape=(2, 3))
 """
 
