@@ -55,6 +55,7 @@ numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple,Union,Optional,Type
 from matplotlib import pyplot as plt
 import networkx as netx
+from numpy.core.multiarray import dtype
 import seaborn as sns
 import numpy as np
 import warnings
@@ -62,7 +63,7 @@ import json
 import csv
 import os
 
-version = "0.7.3"
+version = "0.7.4"
 __mem__ = {}
 
 
@@ -263,7 +264,7 @@ def zeros_like(mat:"Matrix", symbol:Optional[str]=None): return zeros((mat.row,m
 
 def null_like(mat:"Matrix", symbol:Optional[str]=None): return null((mat.row,mat.col),symbol)
 
-def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None): return rand((mat.row,mat.col),seed,symbol)
+def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None): return rand((mat.row,mat.col),mat.dtype,seed,symbol)
 
 def fill_like(mat:"Matrix", value:Union[int,float,bool], symbol:Optional[str]=None): return fill((mat.row,mat.col),value,symbol)
 
@@ -293,16 +294,24 @@ def diagonal(
 
 def rand(
         shape:Tuple[int,int],
+        dtype:Type=float,
         seed:None|int=None,
         symbol:Optional[str]=None
-    ): 
+    ):
     new_mat = []
     if seed is not None: np.random.seed(seed)
     for _ in range(shape[0]):
         buffer = []
-        for _ in range(shape[1]): buffer.append(np.random.rand())
+        for _ in range(shape[1]):
+            if dtype == int: buffer.append(np.random.randint(0,100))
+            elif dtype == float: buffer.append(np.random.rand())
+            elif dtype == complex:
+                real_part = np.random.rand()
+                imag_part = np.random.rand()
+                buffer.append(complex(real_part,imag_part))
+            else: raise ValueError("unsupported dtype. Use int, float, or complex.")
         new_mat.append(buffer)
-    return Matrix(new_mat, symbol=symbol)
+    return Matrix(new_mat, dtype=dtype, symbol=symbol)
 
 def read_csv(filename:str, symbol:Optional[str]):
     if not os.path.exists(filename): raise FileNotFoundError(f"given file name `{filename}` doesn't exist")
@@ -351,7 +360,7 @@ class Matrix:
             if "__mem__" not in globals():
                 global __mem__
                 __mem__ = {}
-            __mem__[self.__symbol] = self()
+            __mem__[self.__symbol] = self
 
     def __check__(
             self,
@@ -373,7 +382,7 @@ class Matrix:
         if symbol is not None and not symbol in globals().get("__mem__",{}) and overwrite is True:
             del __mem__[symbol]
             __mem__[symbol] = self()
-        if symbol is not None and symbol in globals().get("__mem__",{}) and overwrite is False: raise KeyError(f"'{symbol}' already exists! Try a different symbol.")
+        if symbol is not None and symbol in globals().get("__mem__",{}) and overwrite is False: raise KeyError(f"Symbol '{symbol}' already exists! Try a different symbol.")
 
     def __res_dtype__(self, other):
         if not isinstance(other, Matrix):
@@ -508,6 +517,26 @@ class Matrix:
 
     @property
     def dtype(self): return self.__dtype.__name__
+
+    @property
+    def imag(self):
+        if not self.__dtype == complex: return zeros((self.__row,self.__col))
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x.imag)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float)
+
+    @property
+    def real(self):
+        if not self.__dtype == complex: return Matrix(self.__matrix)
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x.real)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float)
 
     @classmethod
     def from_numpy(cls, array, symbol:Optional[str]=None):
@@ -937,7 +966,7 @@ class Matrix:
             symbol:Optional[str]=None
         ):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
-        if self.__col != other.__col: raise ValueError("can't stack two matrices with different shapes")
+        if self.__row != other.__row: raise ValueError(f"number of rows must be equal in both matrices, ({self.__row} != {other.__row})")
         new_mat = []
         for row in range(self.__row):
             buffer = self.__matrix[row] + other.__matrix[row]
@@ -950,7 +979,7 @@ class Matrix:
             symbol:Optional[str]=None
         ):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
-        if self.__col != other.__col: raise ValueError("can't stack two matrices with different shapes")
+        if self.__col != other.__col: raise ValueError(f"number of cols must be equal in both matrices, ({self.__col} != {other.__col})")
         new_mat = []
         for row in range(self.__row): new_mat.append(self.__matrix[row])
         for row in range(other.__row): new_mat.append(other.__matrix[row])
@@ -1137,6 +1166,31 @@ class Matrix:
                 softmax_row = [exp_val / sum_exp for exp_val in exp_row]
                 softmax_matrix.append(softmax_row)
         return Matrix(softmax_matrix, dtype=self.__dtype ,symbol=symbol)
+    
+    def conv2d(self, kernel:"Matrix", padding:int=0):
+        padded_matrix = self.__pad_matrix(padding)
+        kernel_rows, kernel_cols = kernel.__shape
+        output_rows = self.__row - kernel_rows + 1 + 2 * padding
+        output_cols = self.__col - kernel_cols + 1 + 2 * padding
+        output = [[0 for _ in range(output_cols)] for _ in range(output_rows)]
+        for i in range(output_rows):
+            for j in range(output_cols):
+                sub_matrix = [row[j:j+kernel_cols] for row in padded_matrix[i:i+kernel_rows]]
+                output[i][j] = self.__apply_kernel(sub_matrix, kernel)
+        return Matrix(output)
+
+    def __pad_matrix(self, padding):
+        if padding == 0: return self.__matrix
+        padded = [[0] * (self.__col + 2 * padding) for _ in range(self.__row + 2 * padding)]
+        for row in range(self.__row):
+            for x in range(self.__col): padded[row + padding][x + padding] = self.__matrix[row][x]
+        return Matrix(padded)
+
+    def __apply_kernel(self, sub_matrix, kernel):
+        result = 0
+        for row in range(len(sub_matrix)):
+            for x in range(len(sub_matrix[0])): result += sub_matrix[row][x] * kernel.__matrix[row][x]
+        return result
 
     def reciprocate(self):
         new_mat = []
@@ -1220,12 +1274,18 @@ class Matrix:
         ):
         new_mat = []
         if seed is not None: np.random.seed(seed)
-        for row in range(self.__row):
+        for _ in range(self.__row):
             buffer = []
-            for x in range(self.__col): buffer.append(np.random.rand())
+            for _ in range(self.__col):
+                if self.__dtype == int: buffer.append(np.random.randint(0,100))
+                elif self.__dtype == float: buffer.append(np.random.rand())
+                elif self.__dtype == complex:
+                    real_part = np.random.rand()
+                    imag_part = np.random.rand()
+                    buffer.append(complex(real_part,imag_part))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=float, symbol=symbol)
-    
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
     def zeros_like(
             self,
             symbol:Optional[str]=None
@@ -1424,7 +1484,15 @@ class Matrix:
         for row in range(self.__row): result[f"{row}"] = self.__matrix[row]
         return result
 
-    def to_list(self): return self.__matrix
+    def to_list(self, keepdim:bool=True):
+        if keepdim: return self.__matrix
+        return self.squeeze()
+
+    def squeeze(self):
+        result = []
+        for row in self.__matrix:
+            for x in row: result.append(x)
+        return result
 
     def mean(
             self,
@@ -1973,8 +2041,7 @@ class Matrix:
         return Matrix([flattened], dtype=self.__dtype, symbol=symbol)
 
     def reshape(self, shape:Tuple[int,int], symbol:Optional[str]=None):
-        total_elements = self.__row * self.__col
-        if total_elements != shape[0] * shape[1]: raise ValueError(f"cannot reshape array of size {total_elements} into shape {shape}")
+        if self.__size != shape[0] * shape[1]: raise ValueError(f"cannot reshape array of size {self.__size} into shape {shape}")
         flattened = self.flatten().__matrix[0]
         reshaped = []
         for i in range(shape[0]):
