@@ -13,8 +13,8 @@ It also supports operations like LU decomposition, matrix reshaping, and calcula
 Key Functions and Methods:
 
 Creation Functions:
-from_1d(array_1d): Create a Matrix object from a 1D array with specified shape.
-from_2d(array_2d): Creates a Matrix object from a 2D array.
+from1d(array_1d): Create a Matrix object from a 1D array with specified shape.
+from2d(array_2d): Creates a Matrix object from a 2D array.
 zeros(shape): Creates a matrix of the given dimensions filled with zeros.
 ones(shape): Creates a matrix of the given dimensions filled with ones.
 null(shape): Creates a matrix of the given dimensions filled with null(nan) values
@@ -55,7 +55,6 @@ numpy(): Converts the Matrix object to a NumPy array.
 from typing import List,Tuple,Union,Optional,Type
 from matplotlib import pyplot as plt
 import networkx as netx
-from numpy.core.multiarray import dtype
 import seaborn as sns
 import numpy as np
 import warnings
@@ -63,18 +62,17 @@ import json
 import csv
 import os
 
-version = "0.7.4"
+version = "0.7.5"
 __mem__ = {}
 
-
-def from_2d(
+def from2d(
         array_2d:List[List[Union[int,float,bool,complex]]],
         dtype:Type,
         symbol:Optional[str]=None,
         overwrite:bool=False
     ): return Matrix(array_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
-def from_1d(
+def from1d(
         array_1d:List[Union[int,float,bool,complex]],
         shape:Tuple[int,int],
         dtype:Type,
@@ -147,126 +145,610 @@ def linspace(
     if shape is None: return Matrix([linspace_values],symbol)
     return Matrix([linspace_values], symbol=symbol).reshape(shape)
 
+def __res_dtype__(matrix:"Matrix", other:"Matrix"):
+        if not isinstance(other, Matrix):
+            if matrix.dtype == "complex" or type(other) == complex: return complex
+            elif matrix.dtype == "bool" and type(other) == bool: return bool
+            elif (matrix.dtype == "int" and type(other) == float) or (matrix.dtype == "float" and type(other) == int): return float
+            elif (matrix.dtype == "bool" and type(other) == int) or (matrix.dtype == "int" and type(other) == bool): return int
+            else: return float
+        else:
+            if matrix.dtype == "complex" or other.dtype == "complex": return complex
+            elif matrix.dtype == "bool" and other.dtype == "bool": return bool
+            elif (matrix.dtype == "int" and other.dtype == "float") or (matrix.dtype == "float" and other.dtype == "int"): return float
+            elif (matrix.dtype == "bool" and other.dtype == "int") or (matrix.dtype == "int" and other.dtype == "bool"): return int
+            else: return float
+
+def __res_dtype_self__(matrix:"Matrix"):
+    if matrix.dtype == "int": return int
+    elif matrix.dtype == "float": return float
+    elif matrix.dtype == "bool": return bool
+    elif matrix.dtype == "complex": return complex
+
 def add(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: return matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result + matrices[x]
-    if symbol is not None: result.update_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] + obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] + obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def sub(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: return matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result - matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
-
-def matmul(
-        matrices:List["Matrix"],
-        symbol:Optional[str]=None
-    ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: return matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result @ matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] - obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] - obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def mul(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: raise matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result @ matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] * obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] * obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+
+def matmul(
+        matrix:"Matrix",
+        obj:"Matrix",
+        symbol:Optional[str]=None,   
+    ):
+    if matrix.col != obj.row: raise ValueError(f"number of columns in the first matrix must be equal to the number of rows in the second matrix for multiplication")
+    result_matrix = [[0 for _ in range(obj.col)] for _ in range(matrix.row)]
+    for i in range(matrix.row):
+        for j in range(obj.col):
+            for k in range(matrix.col): result_matrix[i][j] += matrix[i][k] * obj[k][j]
+    return Matrix(result_matrix, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def tdiv(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: return matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result / matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] / obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] / obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def fdiv(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: raise matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result // matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] // obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] // obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def mod(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: return matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result % matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] % obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] % obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def pow(
-        matrices:List["Matrix"],
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
         symbol:Optional[str]=None
     ):
-    N = len(matrices)
-    if N == 0: raise ValueError("the list of matrices is empty")
-    elif N == 1: raise matrices[0]
-    result = matrices[0]
-    for x in range(1,N): result = result ** matrices[x]
-    if symbol is not None: result.assign_symbol(symbol)
-    return result
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] ** obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] ** obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
-def empty(symbol:Optional[str]=None): return Matrix([[]],symbol)
+def abs(
+        matrix:"Matrix",
+        symbol:Optional[str]=None
+    ):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            if matrix[row][col] >= 0: buffer.append(matrix[row][col])
+            else: buffer.append(-matrix[row][col])
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
+
+def pos(
+        matrix:"Matrix",
+        symbol:Optional[str]=None
+    ):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col])
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
+
+def neg(
+        matrix:"Matrix",
+        symbol:Optional[str]=None
+    ):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(-matrix[row][col])
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
+
+def true_div(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): tdiv(matrix=matrix, obj=obj, symbol=symbol)
+def floor_div(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): fdiv(matrix=matrix, obj=obj, symbol=symbol)
+def modulo(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): mod(matrix=matrix, obj=obj, symbol=symbol)
+def power(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): pow(matrix=matrix, obj=obj, symbol=symbol)
+def absolute(matrix:"Matrix", symbol:Optional[str]=None): abs(matrix=matrix, symbol=symbol)
+def positive(matrix:"Matrix", symbol:Optional[str]=None): pow(matrix=matrix, symbol=symbol)
+def negative(matrix:"Matrix", symbol:Optional[str]=None): neg(matrix=matrix, symbol=symbol)
+
+def eq(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool,complex],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] == obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] == obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def ne(
+       matrix:"Matrix",
+       obj:Union["Matrix",int,float,bool,complex],
+       symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] != obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] != obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def gt(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool],
+        symbol:Optional[str]=None    
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] > obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] > obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def ge(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] >= obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] >= obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def lt(
+       matrix:"Matrix",
+       obj:Union["Matrix",int,float,bool],
+       symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] < obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] < obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def le(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,float,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] <= obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] <= obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): return eq(matrix=matrix, obj=obj, symbol=symbol)
+def not_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): return ne(matrix=matrix, obj=obj, symbol=symbol)
+def greater(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return gt(matrix=matrix, obj=obj, symbol=symbol)
+def greater_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return ge(matrix=matrix, obj=obj, symbol=symbol)
+def lesser(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return lt(matrix=matrix, obj=obj, symbol=symbol)
+def lesser_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return le(matrix=matrix, obj=obj, symbol=symbol)
+
+def bitwise_and(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] & obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] & obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_or(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the twomatrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] | obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] | obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_invert(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(~matrix[row][col])
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_nand(
+        matrix:"Matrix",
+        obj:"Matrix",
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(~(matrix[row][col] & obj[row][col]))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(~(matrix[row][col] & obj))
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_nor(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(~(matrix[row][col] | obj[row][col]))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(~(matrix[row][col] | obj))
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_xor(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,bool],
+        symbol:Optional[str]=None,
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] ^ obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] ^ obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_xnor(
+        matrix:"Matrix",
+        obj:Union["Matrix",int,bool],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(~(matrix[row][col] ^ obj[row][col]))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(~(matrix[row][col] ^ obj))
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_left_shift(
+        matrix:"Matrix",
+        obj:Union["Matrix",int],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] << obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] << obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def bitwise_right_shift(
+        matrix:"Matrix",
+        obj:Union["Matrix",int],
+        symbol:Optional[str]=None
+    ):
+    if isinstance(obj,Matrix):
+        if not (matrix.shape == obj.shape): raise ValueError(f"the shape of the two matrices must be the same, {matrix.shape} != {obj.shape}")
+        new_mat = []
+        for row in range(matrix.row):
+            buffer = []
+            for col in range(matrix.col): buffer.append(matrix[row][col] >> obj[row][col])
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(matrix[row][col] >> obj)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=int, symbol=symbol)
+
+def empty(symbol:Optional[str]=None): return Matrix([[]], symbol)
 
 def __fill(shape:Tuple[int,int], value:Union[int,float,bool,complex], symbol:Optional[str]=None):
     # NOTE just a helper function
-    if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])], dtype=type(value), symbol = symbol)
+    if len(shape) == 2: return Matrix([[value for _ in range(shape[1])] for _ in range(shape[0])], dtype=type(value), symbol=symbol)
     raise ValueError("dimension must consist only number of rows and columns")
 
 def ones(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,1,symbol)
-
-def zeros(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)    
-
+def zeros(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)
 def null(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)
-
 def fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None): return __fill(shape,value,symbol)
-
-def ones_like(mat:"Matrix", symbol:Optional[str]=None): return ones((mat.row,mat.col),symbol)
-
+def ones_like(mat:"Matrix", symbol:Optional[str]=None):return ones((mat.row,mat.col),symbol)
 def zeros_like(mat:"Matrix", symbol:Optional[str]=None): return zeros((mat.row,mat.col),symbol)
-
 def null_like(mat:"Matrix", symbol:Optional[str]=None): return null((mat.row,mat.col),symbol)
-
-def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None): return rand((mat.row,mat.col),mat.dtype,seed,symbol)
-
 def fill_like(mat:"Matrix", value:Union[int,float,bool], symbol:Optional[str]=None): return fill((mat.row,mat.col),value,symbol)
+def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None):
+    res_dtype = complex if mat.dtype == complex else float
+    return rand((mat.row,mat.col),dtype=res_dtype,seed=seed,symbol=symbol)
+
+def isnan(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            value = matrix[row][col]
+            if value != value: buffer.append(True)
+            else: buffer.append(False)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def isinf(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            value = matrix[row][col]
+            if value == float("inf") or value == -float("inf"): buffer.append(True)
+            else: buffer.append(False)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def isposinf(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            value = matrix[row][col]
+            if value == float("inf"): buffer.append(True)
+            else: buffer.append(False)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def isneginf(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            value = matrix[row][col]
+            if value == -float("inf"): buffer.append(True)
+            else: buffer.append(False)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def isfinite(matrix:"Matrix", symbol:Optional[str]=None):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col):
+            value = matrix[row][col]
+            if value == float("inf") or value == -float("inf") or value != value: buffer.append(False)
+            else: buffer.append(True)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+def clip(
+        matrix:"Matrix",
+        min_value:Union[int,float],
+        max_value:Union[int,float],
+        inplace:bool=False,
+        symbol:Optional[str]=None
+    ):
+    new_mat = []
+    for row in range(matrix.row):
+        buffer = []
+        for col in range(matrix.col): buffer.append(min(max(matrix[row][col],min_value),max_value))
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
+
+def clamp(
+        matrix:"Matrix",
+        min_value:Union[int,float],
+        max_value:Union[int,float],
+        symbol:Optional[str]=None    
+    ): return clip(matrix, min_value=min_value, max_value=max_value, symbol=symbol)
 
 def identity(N:int, symbol:Optional[str]=None): 
     new_mat = []
@@ -303,8 +785,7 @@ def rand(
     for _ in range(shape[0]):
         buffer = []
         for _ in range(shape[1]):
-            if dtype == int: buffer.append(np.random.randint(0,100))
-            elif dtype == float: buffer.append(np.random.rand())
+            if dtype == float: buffer.append(np.random.rand())
             elif dtype == complex:
                 real_part = np.random.rand()
                 imag_part = np.random.rand()
@@ -724,6 +1205,16 @@ class Matrix:
             for x in range(self.__col): buffer.append(other % self.__matrix[row][x])
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__res_dtype__(other))
+    
+    def __abs__(self):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x < 0: buffer.append(-x)
+                else: buffer.append(x)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype)
 
     def __pos__(self): return Matrix(self.__matrix, dtype=self.__dtype)
 
@@ -731,8 +1222,7 @@ class Matrix:
         new_mat = []
         for row in range(self.__row):
             buffer = []
-            for x in range(self.__col):
-                buffer.append(-self.__matrix[row][x])
+            for x in range(self.__col): buffer.append(-self.__matrix[row][x])
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype)
 
@@ -1166,6 +1656,26 @@ class Matrix:
                 softmax_row = [exp_val / sum_exp for exp_val in exp_row]
                 softmax_matrix.append(softmax_row)
         return Matrix(softmax_matrix, dtype=self.__dtype ,symbol=symbol)
+
+    def softmin(self, axis:int=0, symbol:Optional[str]=None):
+        if axis not in [0, 1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
+        softmin_matrix = []
+        if axis == 0:
+            for x in range(self.__col):
+                column = [self.__matrix[y][x] for y in range(self.__row)]
+                neg_exp_column = [self.__exp(-i) for i in column]
+                sum_neg_exp = sum(neg_exp_column)
+                softmin_column = [exp_val / sum_neg_exp for exp_val in neg_exp_column]
+                softmin_matrix.append(softmin_column)
+            softmin_matrix = list(map(list, zip(*softmin_matrix)))
+        elif axis == 1:
+            for i in range(self.__row):
+                row = self.__matrix[i]
+                neg_exp_row = [self.__exp(-x) for x in row]
+                sum_neg_exp = sum(neg_exp_row)
+                softmin_row = [exp_val / sum_neg_exp for exp_val in neg_exp_row]
+                softmin_matrix.append(softmin_row)
+        return Matrix(softmin_matrix, dtype=self.__dtype, symbol=symbol)
     
     def conv2d(self, kernel:"Matrix", padding:int=0):
         padded_matrix = self.__pad_matrix(padding)
@@ -1201,13 +1711,77 @@ class Matrix:
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=float)
     
-    def isnan(self):
+    def isnan(self, symbol:Optional[str]=None):
+        new_mat = []
         for row in range(self.__row):
+            buffer = []
             for x in range(self.__col):
-                if isinstance(self.__matrix[row][x],float) and self.__matrix[row][x] != self.__matrix[row][x]: return True
-        return False
+                if isinstance(self.__matrix[row][x],float) and self.__matrix[row][x] != self.__matrix[row][x]: buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    
+    def isinf(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x == float("inf") or x == -float("inf"): buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    
+    def isposinf(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x == float("inf"): buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-    def is_null(self):
+    def isneginf(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x == -float("inf"): buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+    
+    def isfinite(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x == float("inf") or x == -float("inf") or x != x: buffer.append(False)
+                else: buffer.append(True)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+    def isreal(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x.imag == 0: buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+    def isimag(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x.imag != 0: buffer.append(True)
+                else: buffer.append(False)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=bool, symbol=symbol)
+
+    def isnull(self):
         for row in range(self.__row):
             for x in range(self.__col):
                 if self.__matrix[row][x] == 0: continue
@@ -1240,25 +1814,65 @@ class Matrix:
             for x in range(self.__col): result[row] += self.__matrix[row][x] * vector[x]
         return result
 
+    def conj(self, symbol:Optional[str]=None):
+        if not self.__dtype == complex: return Matrix(self.__matrix, dtype=self.__dtype, symbol=symbol)
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x.conjugate())
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=complex, symbol=symbol)
+    
+    def mag(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(np.sqrt(x.real**2 + x.imag**2))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float, symbol=symbol)
+
+    def arg(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(np.arctan(x.imag/x.real))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float, symbol=symbol)
+
+    def sgn(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                mag = np.sqrt(x.real**2 + x.imag**2)
+                if mag == 0: buffer.append(0)
+                else: buffer.append(x / mag)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=complex, symbol=symbol)
+
     def pos(self): return +self
     def neg(self): return -self
 
     def add(self, other:List[Union["Matrix",int,float,complex]]): return self + other
     def sub(self, other:List[Union["Matrix",int,float,complex]]): return self - other
     def mul(self, other:List[Union["Matrix",int,float,complex]]): return self * other
-    def mod(self, other:List[Union["Matrix",int,float,complex]]): return self % other
-    def pow(self, other:list[Union["Matrix",int,float,complex]]): return self ** other
     def truediv(self, other:List[Union["Matrix",int,float,complex]]): return self / other
     def floordiv(self, other:List[Union["Matrix",int,float,complex]]): return self // other
+    def pow(self, other:list[Union["Matrix",int,float,complex]]): return self ** other
+    def mod(self, other:List[Union["Matrix",int,float,complex]]): return self % other
     def matmul(self, other:"Matrix"): return self @ other
+    def abs(self): return self.__abs__()
+    def absolute(self): return self.__abs__()
 
-    def AND(self, other:List[Union["Matrix",int]]): return self & other
-    def NAND(self, other:List[Union["Matrix",int]]): return ~(self & other)
-    def OR(self, other:List[Union["Matrix",int]]): return self | other
-    def NOR(self, other:List[Union["Matrix",int]]): return ~(self | other)
-    def INVERT(self): return ~self
-    def XOR(self, other:List[Union["Matrix",int]]): return self ^ other
-    def XNOR(self, other:List[Union["Matrix",int]]): return ~(self ^ other)
+    def bitwise_and(self, other:List[Union["Matrix",int]]): return self & other
+    def bitwise_nand(self, other:List[Union["Matrix",int]]): return ~(self & other)
+    def bitwise_or(self, other:List[Union["Matrix",int]]): return self | other
+    def bitwise_nor(self, other:List[Union["Matrix",int]]): return ~(self | other)
+    def bitwise_invert(self): return ~self
+    def bitwise_xor(self, other:List[Union["Matrix",int]]): return self ^ other
+    def bitwise_xnor(self, other:List[Union["Matrix",int]]): return ~(self ^ other)
+    def bitwise_left_shift(self, other:List[Union["Matrix",int]]): return self << other
+    def bitwise_right_shift(self, other:List[Union["Matrix",int]]): return self >> other
 
     def eq(self, other:List[Union["Matrix",int,float,complex]]): return  self == other
     def ne(self, other:List[Union["Matrix",int,float,complex]]): return self != other
@@ -1406,6 +2020,32 @@ class Matrix:
         else: raise ValueError("invalid argument for `dtype` expected from `True` or `False`")
 
     def copy(self, symbol:Optional[str]=None): return Matrix([row[:] for row in self.__matrix], dtype=self.__dtype, symbol=symbol)
+    def cp(self, symbol:Optional[str]=None): return Matrix([row[:] for row in self.__matrix], dtype=self.__dtype, symbol=symbol)
+
+    def reverse(self, mode:int=0, symbol:Optional[str]=None):
+        if mode == 0: return Matrix([rows[::-1] for rows in self.__matrix], dtype=self.__dtype, symbol=symbol)
+        elif mode == 1: return Matrix(self.__matrix[::-1], dtype=self.__dtype, symbol=symbol)
+        elif mode == 2: return Matrix([row[::-1] for row in self.__matrix[::-1]], dtype=self.__dtype, symbol=symbol)
+        raise ValueError(f"expected mode values are 0, 1 or 2 but expected {mode}")
+
+    def clip(
+            self,
+            min_value:Union[int,float],
+            max_value:Union[int,float],
+            symbol:Optional[str]=None
+        ):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(min(max(x,min_value),max_value))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def clamp(
+            self,
+            min_value:Union[int,float],
+            max_value:Union[int,float]
+        ): return self.clip(min_value=min_value, max_value=max_value)
 
     def get(
             self,
@@ -1670,7 +2310,7 @@ class Matrix:
         if self.__dtype == complex: raise TypeError("matrix with complex datatype cannot be sorted")
         if axis is None:
             if symbol is not None: warnings.warn("Warning: the 'symbol' parameter is ignored when 'axis' is None",UserWarning)
-            return from_1d(sorted(self.flatten().to_list()[0]),self.__shape,symbol)
+            return from1d(sorted(self.flatten().to_list()[0]),self.__shape,symbol)
         elif axis == 1:
             new_mat = [sorted(row) for row in self.__matrix]
             return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
@@ -1718,7 +2358,7 @@ class Matrix:
                     if int(number) == number: buffer.append(number)
                     else: buffer.append(int(number) - 1)
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
 
     def ceil(
             self,
@@ -1733,7 +2373,7 @@ class Matrix:
                 if number == int(number): buffer.append(int(number))
                 else: buffer.append(int(number) + 1 if number > 0 else int(number))
             new_mat.append(buffer)
-        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+        return Matrix(new_mat, dtype=int, symbol=symbol)
 
     def scale(self, scalar:Union[int,float,bool,complex], symbol:Optional[str]=None):
         new_mat = []
@@ -1761,6 +2401,24 @@ class Matrix:
         if self.__dtype == complex: result_dtype = complex
         else: result_dtype = float
         return Matrix(new_mat, dtype=result_dtype, symbol=symbol)
+
+    def rad2deg(self, symbol:Optional[str]=None):
+        if self.__dtype == complex: raise TypeError("rad2deg is not supported for complex matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x * 180/np.pi)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float, symbol=symbol)
+
+    def deg2rad(self, symbol:Optional[str]=None):
+        if self.__dtype == complex: raise TypeError("rad2deg is not supported for complex matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x * np.pi/180)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float, symbol=symbol)
 
     def sin(self, symbol:Optional[str]=None):
         new_mat = []
@@ -2040,15 +2698,31 @@ class Matrix:
         flattened = [item for row in self.__matrix for item in row]
         return Matrix([flattened], dtype=self.__dtype, symbol=symbol)
 
-    def reshape(self, shape:Tuple[int,int], symbol:Optional[str]=None):
-        if self.__size != shape[0] * shape[1]: raise ValueError(f"cannot reshape array of size {self.__size} into shape {shape}")
-        flattened = self.flatten().__matrix[0]
-        reshaped = []
-        for i in range(shape[0]):
-            row = []
-            for j in range(shape[1]): row.append(flattened[i * shape[1] + j])
-            reshaped.append(row)
-        return Matrix(reshaped, dtype=self.__dtype, symbol=symbol)
+    def narrow(self, axis:int, start:int, length:int, symbol:Optional[str]=None):
+        if axis not in [0,1]: raise ValueError(f"Invalid axis: {axis}. Expected '0' (rows) or '1' (columns).")
+        if axis == 0:
+            if start < 0: start = self.__row + start
+            if start < 0 or start + length > self.__row: raise ValueError("Invalid start or length for row narrowing")
+            narrowed_matrix = self.__matrix[start:start + length]
+        elif axis == 1:
+            if start < 0: self.__col + start
+            if start < 0 or start + length > self.__col: raise ValueError("Invalid start or length for column narrowing")
+            narrowed_matrix = [row[start:start + length] for row in self.__matrix]
+        return Matrix(narrowed_matrix, dtype=self.__dtype, symbol=symbol)
+
+    def reshape(self, rows:int, cols:int):
+        if self.__size != rows * cols: raise ValueError(f"cannot reshape array of size {self.__size} into shape {(rows,cols)}")
+        flattend = self.squeeze()
+        self.__matrix = [flattend[i * cols:(i + 1) * cols] for i in range(rows)]
+        self.__row = rows
+        self.__col = cols
+        self.__shape = (self.__row,self.__col)
+
+    def view(self, shape:Tuple[int,int], symbol:Optional[str]=None):
+        rows,cols = shape
+        if self.__size != rows * cols: raise ValueError(f"cannot reshape array of size {self.__size} into shape {shape}")
+        flattend = self.squeeze()
+        return Matrix([flattend[i * cols:(i + 1) * cols] for i in range(rows)], dtype=self.__dtype, symbol=symbol)
 
     def lu_decomposition(self):
         if not self.is_square(): raise ValueError("LU decomposition is only defined for square matrices")
