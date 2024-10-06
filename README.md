@@ -5,6 +5,7 @@
 ## Implementation
 ```python
 from matrix import Matrix
+from matrix import extra
 
 x = Matrix([[1,2,3],[4,5,6]], dtype=int)                     # default symbol = None
 y = Matrix([[2,3,4],[5,6,7]], symbol="A")                    # default dtype = float
@@ -13,13 +14,28 @@ print(x())                                                   # <'Matrix' object 
 print(y())                                                   # <'Matrix' object at 0x7fb588637f10 dtype=float size=6 shape=(2, 3) symbol=A>
 print(x.numpy())                                             # array([[1, 2, 3], [4, 5, 6]])
 print((x + y)())                                             # <'Matrix' object at 0x7fb544042140 dtype=float size=6 shape=(2, 3) symbol=None>
-print(x + y)
 
-# Output
+print(x + y)
 """
 Matrix([
     [ 3.00000,  5.00000,  7.00000],
     [ 9.00000, 11.00000, 13.00000]
+], dtype=float, symbol=None, shape=(2, 3))
+"""
+
+print(extra.entr(x.astype(float)))
+"""
+Matrix([
+    [ -0.00000,  -1.38629,  -3.29584],
+    [ -5.54518,  -8.04719, -10.75056]
+], dtype=float, symbol=None, shape=(2, 3))
+"""
+
+print(extra.exp2(y.astype(float)))
+"""
+Matrix([
+    [  4.00000,   8.00000,  16.00000],
+    [ 32.00000,  64.00000, 128.00000]
 ], dtype=float, symbol=None, shape=(2, 3))
 """
 
