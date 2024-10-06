@@ -2,7 +2,7 @@
 
 ## ***A Python library for performing advanced matrix calculations***
 
-## Usage
+## Implementation
 ```python
 from matrix import Matrix
 
