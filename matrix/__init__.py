@@ -62,7 +62,7 @@ import json
 import csv
 import os
 
-version = "0.7.5"
+version = "0.8.0"
 __mem__ = {}
 
 def from2d(
@@ -147,10 +147,10 @@ def linspace(
 
 def __res_dtype__(matrix:"Matrix", other:"Matrix"):
         if not isinstance(other, Matrix):
-            if matrix.dtype == "complex" or type(other) == complex: return complex
-            elif matrix.dtype == "bool" and type(other) == bool: return bool
-            elif (matrix.dtype == "int" and type(other) == float) or (matrix.dtype == "float" and type(other) == int): return float
-            elif (matrix.dtype == "bool" and type(other) == int) or (matrix.dtype == "int" and type(other) == bool): return int
+            if matrix.dtype == "complex" or isinstance(other,complex): return complex
+            elif matrix.dtype == "bool" and isinstance(other,bool): return bool
+            elif (matrix.dtype == "int" and isinstance(other,float)) or (matrix.dtype == "float" and isinstance(other,int)): return float
+            elif (matrix.dtype == "bool" and isinstance(other,int)) or (matrix.dtype == "int" and isinstance(other,bool)): return int
             else: return float
         else:
             if matrix.dtype == "complex" or other.dtype == "complex": return complex
@@ -867,16 +867,16 @@ class Matrix:
 
     def __res_dtype__(self, other):
         if not isinstance(other, Matrix):
-            if self.__dtype == complex or type(other) == complex: return complex
-            elif self.__dtype == bool and type(other) == bool: return bool
-            elif (self.__dtype == int and type(other) == float) or (self.__dtype == float and type(other) == int): return float
-            elif (self.__dtype == bool and type(other) == int) or (self.__dtype == int and type(other) == bool): return int
-            else: return float
-        else:
             if self.__dtype == complex or other.__dtype == complex: return complex
             elif self.__dtype == bool and other.__dtype == bool: return bool
             elif (self.__dtype == int and other.__dtype == float) or (self.__dtype == float and other.__dtype == int): return float
-            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool): return int
+            elif (self.__dtype == bool and other.__dtype == int) or (self.__dtype == int and other.__dtype == bool) or (self.__dtype == int and other.__dtype == int): return int
+            else: return float
+        else:
+            if self.__dtype == complex or type(other) == complex: return complex
+            elif self.__dtype == bool and type(other) == bool: return bool
+            elif (self.__dtype == int and type(other) == float) or (self.__dtype == float and type(other) == int): return float
+            elif (self.__dtype == bool and type(other) == int) or (self.__dtype == int and type(other) == bool) or (self.__dtype == int and type(other) == int): return int
             else: return float
 
     def __iter__(self):
@@ -953,20 +953,23 @@ class Matrix:
             self.__symbol = None
 
     def __getitem__(self, indices):
-        if isinstance(indices,tuple):
+        if isinstance(indices,tuple) and len(indices) == 2:
             row,col = indices
             return self.__matrix[row][col]
-        else:
+        elif isinstance(indices,int):
             row = indices
             return self.__matrix[row]
+        raise TypeError("Indexing should be either a tuple for 2D or an integer for 1D row assignment")
 
     def __setitem__(self, indices, value):
-        if isinstance(indices,tuple):
+        if isinstance(indices,tuple) and len(indices) == 2:
             row,col = indices
-            if not isinstance(value,str): self.__matrix[row][col] = value
+            if not isinstance(value,str):
+                self.__matrix[row][col] = value
+                if isinstance(value,complex): self.astype(complex, inplace=True)
             else: raise TypeError("expected value to be an int or float")
             self.astype(self.__res_dtype__(value), inplace=True)
-        else:
+        elif isinstance(indices,int):
             row = indices
             if isinstance(value,list):
                 if len(value) == self.__col:
@@ -977,6 +980,7 @@ class Matrix:
                     else: self.astype(float, inplace=True) 
                 else: raise ValueError("number of elements in the row must be equal to the number of columns")
             else: raise TypeError("expected value to be a list")
+        else: raise TypeError("Indexing should be either a tuple for 2D or an integer for 1D row assignment")
 
     @property
     def row(self): return self.__row
