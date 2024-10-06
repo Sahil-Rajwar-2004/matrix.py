@@ -1,9 +1,7 @@
 from typing import Union,Optional
 import numpy as np
 import math
-import matrix
-
-Matrix = matrix.Matrix
+from matrix import Matrix
 
 def __res_dtype__(matrix:Matrix, other:Matrix):
     if not isinstance(other, Matrix):
