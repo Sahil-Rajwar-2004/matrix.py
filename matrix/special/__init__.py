@@ -25,13 +25,13 @@ def __res_dtype_self__(matrix:Matrix):
     elif matrix.dtype == "bool": return bool
     elif matrix.dtype == "complex": return complex
 
-def exp2(matrix:Matrix, symobl:Optional[str]=None):
+def exp2(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
         for col in range(matrix.col): buffer.append(2 ** matrix[row,col])
         new_mat.append(buffer)
-    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symobl)
+    return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
 
 def exp3(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
