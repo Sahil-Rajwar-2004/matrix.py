@@ -1,6 +1,6 @@
 # matrix.py
 
-## ***python library for calculations with matrices***
+## ***A Python library for performing advanced matrix calculations***
 
 ## Usage
 ```python
