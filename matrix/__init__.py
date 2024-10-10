@@ -62,7 +62,7 @@ import json
 import csv
 import os
 
-version = "0.8.0"
+version = "0.8.1"
 __mem__ = {}
 
 def from2d(
@@ -655,7 +655,14 @@ def bitwise_right_shift(
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
-def empty(symbol:Optional[str]=None): return Matrix([[]], symbol)
+def empty(shape:Tuple[int,int] ,symbol:Optional[str]=None):
+    row,col = shape
+    new_mat = 0
+    for x in range(row):
+        buffer = []
+        for y in range(col): buffer.append(0)
+        new_mat.append(buffer)
+    return Matrix(new_mat, dtype=float, symbol=symbol)
 
 def __fill(shape:Tuple[int,int], value:Union[int,float,bool,complex], symbol:Optional[str]=None):
     # NOTE just a helper function
@@ -1626,6 +1633,7 @@ class Matrix:
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
     def relu(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"relu can't be implemented on 'complex' or 'bool' dtype matrices")
         new_mat = []
         for row in range(self.__row):
             buffer = []
@@ -1633,11 +1641,181 @@ class Matrix:
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
-    def softplus(self, symbol:Optional[str]=None):
+    def prelu(self, a:Union[int,float], symbol:Optinal[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError("prelu can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(a,(int,float)): raise TypeError(f"Invalid 'a' dtype, expected either int or float but got '{type(a).__name__}'")
         new_mat = []
-        for row in range(self.__row):
+        for row in self.__matrix:
             buffer = []
-            for x in range(self.__col): buffer.append(np.log1p(np.exp(self.__matrix[row][x])))
+            for x in row:
+                if x >= 0: buffer.append(x)
+                else: buffer.append(a*x)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=float, symbol=symbol)
+
+    def relu6(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"relu6 can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(min(max(0,x),6))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def elu(self, alpha:Union[int,float]=1.0, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"elu can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(alpha,(int,float)): raise TypeError(f"Invalid alpha dtype, expected either int or float but got '{type(alpha).__name__}'")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x > 0: buffer.append(x)
+                else: buffer.append(alpha * (np.exp(x) - 1))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def rrelu(self, upper:Union[int,float]=1/8, lower:Union[int,float]=1/3, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"rrelu can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        a = (lower + upper) / 2
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x >= 0: buffer.append(x)
+                else: buffer.append(a * x)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def selu(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"selu can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        alpha = 1.6732632423543772848170429916717
+        scale = 1.0507009873554804934193349852946
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(scale * (max(0,x) + min(0,alpha * (np.exp(x) - 1))))
+            new_mat.append(buffer)
+        return Matrix(new_mat, symbol=symbol)
+
+    def celu(self, alpha:Union[int,float]=1.0, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"celu can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(alpha,(int,float)): raise TypeError(f"Invalid alpha dtype, expected either int or float but got '{type(alpha).__name__}'")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(max(0,x) + min(0,alpha * (np.exp(x/alpha) - 1)))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def gelu(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"gelu can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                value = 0.5 * x + (1 + np.tanh(np.sqrt(2/np.pi) * (x + 0.044715 * x ** 3)))
+                buffer.append(value)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def silu(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"silu can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                value = x * (1 + np.exp(-x) ** -1)
+                buffer.append(value)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def mish(self, beta:Union[int,float]=1.0, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"mish can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(beta,(int,float)): raise TypeError(f"Invalid beta dtype, expected either int or float but got '{type(alpha).__name__}'")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                sp = beta ** -1 * np.log(1 + np.exp(beta * x))
+                value = x * np.tanh(sp)
+                buffer.append(value)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def softshrink(self, lambda_:Union[int,float]=0.5, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"softshrink can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(lambda_,(int,float)): raise TypeError(f"Invalid lambda dtype, expected either int or float but got '{type(lambda_).__name__}'")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x > lambda_: buffer.append(x - lambda_)
+                elif x < -lambda_: buffer.append(x + lambda_)
+                else: buffer.append(0)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def softsign(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"softsign can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x / (1 + np.abs(x)))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def tanhshrink(self, symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"tanhshrink can't be implemented on 'complex' or 'bool' dtype matrices")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(x - np.tanh(x))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def threshold(self, value:Union[int,float], symbol:Optional[str]=None):
+        if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"threshold can't be implemented on 'complex' or 'bool' dtype matrices")
+        if not isinstance(value,(int,float)): raise TypeError(f"invalid value dtype, expected either int or float but got '{type(valye).__name__}'")
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row:
+                if x > value: buffer.append(x)
+                else: buffer.append(value)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def logsoftmax(self, axis:int=0, symbol:Optional[str]=None):
+        if axis not in [0,1]: raise ValueError("axis must be 0(row-wise) or 1(column-wise)")
+        logsoftmax_matrix = []
+        if axis == 0:
+            for x in range(self.__col):
+                column = [self.__matrix[y][x] for y in range(self.__row)]
+                max_val = max(column)
+                shifted_col = [val - max_val for val in column]
+                exp_col = [self.__exp(val) for val in shifted_col]
+                sum_exp = sum(exp_col)
+                log_sum_exp = self.__log(sum_exp)
+                logsoftmax_column = [val - max_val - log_sum_exp for val in column]
+                logsoftmax_matrix.append(logsoftmax_column)
+            logsoftmax_matrix = list(map(list,zip(*logsoftmax_matrix)))
+        elif axis == 1:
+            for i in range(self.__row):
+                row = self.__matrix[i]
+                max_val = max(row)
+                shifted_row = [val - max_val for val in row]
+                exp_row = [self.__exp(val) for val in shifted_row]
+                sum_exp = sum(exp_row)
+                log_sum_exp = self.__log(sum_exp)
+                logsoftmax_row = [val - max_val - log_sum_exp for val in row]
+                logsoftmax_matrix.append(logsoftmax_row)
+            return Matrix(logsoftmax_matrix, dtype=self.__dtype, symbol=symbol)
+
+    def softplus(self, beta:Union[int,float]=1.0, symbol:Optional[str]=None):
+        new_mat = []
+        for row in self.__matrix:
+            buffer = []
+            for x in row: buffer.append(beta ** -1 * np.log(1 + np.exp(beta * x)))
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
@@ -1647,7 +1825,9 @@ class Matrix:
         if axis == 0:
             for x in range(self.__col):
                 column = [self.__matrix[y][x] for y in range(self.__row)]
-                exp_column = [self.__exp(i) for i in column]
+                max_val = max(column)
+                shifted_column = [val - max_val for val in column]
+                exp_column = [self.__exp(i) for i in shifted_column]
                 sum_exp = sum(exp_column)
                 softmax_column = [exp_val / sum_exp for exp_val in exp_column]
                 softmax_matrix.append(softmax_column)
@@ -1655,11 +1835,13 @@ class Matrix:
         elif axis == 1:
             for i in range(self.__row):
                 row = self.__matrix[i]
-                exp_row = [self.__exp(x) for x in row]
+                max_val = max(row)
+                shifted_row = [val - max_val for val in row]
+                exp_row = [self.__exp(x) for x in shifted_row]
                 sum_exp = sum(exp_row)
                 softmax_row = [exp_val / sum_exp for exp_val in exp_row]
                 softmax_matrix.append(softmax_row)
-        return Matrix(softmax_matrix, dtype=self.__dtype ,symbol=symbol)
+        return Matrix(softmax_matrix, dtype=self.__dtype, symbol=symbol)
 
     def softmin(self, axis:int=0, symbol:Optional[str]=None):
         if axis not in [0, 1]: raise ValueError("axis must be 0 (row-wise) or 1 (column-wise)")
@@ -1667,20 +1849,24 @@ class Matrix:
         if axis == 0:
             for x in range(self.__col):
                 column = [self.__matrix[y][x] for y in range(self.__row)]
-                neg_exp_column = [self.__exp(-i) for i in column]
-                sum_neg_exp = sum(neg_exp_column)
-                softmin_column = [exp_val / sum_neg_exp for exp_val in neg_exp_column]
+                max_neg = max(-val for val in column)
+                shifted_column = [-val - max_neg for val in column]
+                exp_column = [self.__exp(i) for i in shifted_column]
+                sum_exp = sum(exp_column)
+                softmin_column = [exp_val / sum_exp for exp_val in exp_column]
                 softmin_matrix.append(softmin_column)
             softmin_matrix = list(map(list, zip(*softmin_matrix)))
         elif axis == 1:
             for i in range(self.__row):
                 row = self.__matrix[i]
-                neg_exp_row = [self.__exp(-x) for x in row]
-                sum_neg_exp = sum(neg_exp_row)
-                softmin_row = [exp_val / sum_neg_exp for exp_val in neg_exp_row]
+                max_neg = max(-val for val in row)
+                shifted_row = [-val - max_neg for val in row]
+                exp_row = [self.__exp(i) for i in shifted_row]
+                sum_exp = sum(exp_row)
+                softmin_row = [exp_val / sum_exp for exp_val in exp_row]
                 softmin_matrix.append(softmin_row)
         return Matrix(softmin_matrix, dtype=self.__dtype, symbol=symbol)
-    
+
     def conv2d(self, kernel:"Matrix", padding:int=0):
         padded_matrix = self.__pad_matrix(padding)
         kernel_rows, kernel_cols = kernel.__shape
