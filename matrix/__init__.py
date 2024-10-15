@@ -1641,7 +1641,7 @@ class Matrix:
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
-    def prelu(self, a:Union[int,float], symbol:Optinal[str]=None):
+    def prelu(self, a:Union[int,float], symbol:Optional[str]=None):
         if self.__dtype == complex or self.__dtype == bool: raise TypeError("prelu can't be implemented on 'complex' or 'bool' dtype matrices")
         if not isinstance(a,(int,float)): raise TypeError(f"Invalid 'a' dtype, expected either int or float but got '{type(a).__name__}'")
         new_mat = []
