@@ -1693,7 +1693,7 @@ class Matrix:
 
     def leaky_relu(
             self,
-            negative_slope:Union[int,float],
+            negative_slope:Union[int,float]=0.01,
             inplace:bool=False,
             symbol:Optional[str]=None
         ):
