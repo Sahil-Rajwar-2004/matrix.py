@@ -52,6 +52,7 @@ numpy(): Converts the Matrix object to a NumPy array.
 """
 
 
+from __future__ import annotations
 from typing import List,Tuple,Union,Optional,Type
 from matplotlib import pyplot as plt
 import networkx as netx
@@ -62,7 +63,7 @@ import json
 import csv
 import os
 
-version = "0.8.1"
+version = "0.8.2."
 __mem__ = {}
 
 def from2d(
@@ -87,7 +88,7 @@ def from1d(
     return Matrix(matrix_2d, dtype=dtype, symbol=symbol, overwrite=overwrite)
 
 def concat(
-        matrices:List["Matrix"],
+        matrices:List[Matrix],
         axis:int=0,
         symbol:Optional[str]=None
     ):
@@ -145,7 +146,7 @@ def linspace(
     if shape is None: return Matrix([linspace_values],symbol)
     return Matrix([linspace_values], symbol=symbol).reshape(shape)
 
-def __res_dtype__(matrix:"Matrix", other:"Matrix"):
+def __res_dtype__(matrix:Matrix, other:Matrix):
         if not isinstance(other, Matrix):
             if matrix.dtype == "complex" or isinstance(other,complex): return complex
             elif matrix.dtype == "bool" and isinstance(other,bool): return bool
@@ -159,15 +160,15 @@ def __res_dtype__(matrix:"Matrix", other:"Matrix"):
             elif (matrix.dtype == "bool" and other.dtype == "int") or (matrix.dtype == "int" and other.dtype == "bool"): return int
             else: return float
 
-def __res_dtype_self__(matrix:"Matrix"):
+def __res_dtype_self__(matrix:Matrix):
     if matrix.dtype == "int": return int
     elif matrix.dtype == "float": return float
     elif matrix.dtype == "bool": return bool
     elif matrix.dtype == "complex": return complex
 
 def add(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -186,8 +187,8 @@ def add(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def sub(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -206,8 +207,8 @@ def sub(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def mul(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -226,8 +227,8 @@ def mul(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def matmul(
-        matrix:"Matrix",
-        obj:"Matrix",
+        matrix:Matrix,
+        obj:Matrix,
         symbol:Optional[str]=None,   
     ):
     if matrix.col != obj.row: raise ValueError(f"number of columns in the first matrix must be equal to the number of rows in the second matrix for multiplication")
@@ -238,8 +239,8 @@ def matmul(
     return Matrix(result_matrix, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def tdiv(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -258,8 +259,8 @@ def tdiv(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def fdiv(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -278,8 +279,8 @@ def fdiv(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def mod(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -298,8 +299,8 @@ def mod(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def pow(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -318,7 +319,7 @@ def pow(
     return Matrix(new_mat, dtype=__res_dtype__(matrix,obj), symbol=symbol)
 
 def abs(
-        matrix:"Matrix",
+        matrix:Matrix,
         symbol:Optional[str]=None
     ):
     new_mat = []
@@ -331,7 +332,7 @@ def abs(
     return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
 
 def pos(
-        matrix:"Matrix",
+        matrix:Matrix,
         symbol:Optional[str]=None
     ):
     new_mat = []
@@ -342,7 +343,7 @@ def pos(
     return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
 
 def neg(
-        matrix:"Matrix",
+        matrix:Matrix,
         symbol:Optional[str]=None
     ):
     new_mat = []
@@ -352,17 +353,17 @@ def neg(
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
 
-def true_div(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): tdiv(matrix=matrix, obj=obj, symbol=symbol)
-def floor_div(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): fdiv(matrix=matrix, obj=obj, symbol=symbol)
-def modulo(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): mod(matrix=matrix, obj=obj, symbol=symbol)
-def power(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): pow(matrix=matrix, obj=obj, symbol=symbol)
-def absolute(matrix:"Matrix", symbol:Optional[str]=None): abs(matrix=matrix, symbol=symbol)
-def positive(matrix:"Matrix", symbol:Optional[str]=None): pow(matrix=matrix, symbol=symbol)
-def negative(matrix:"Matrix", symbol:Optional[str]=None): neg(matrix=matrix, symbol=symbol)
+def true_div(matrix:Matrix, obj:Union[Matrix,int,float,bool,complex], symbol:Optional[str]=None): tdiv(matrix=matrix, obj=obj, symbol=symbol)
+def floor_div(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): fdiv(matrix=matrix, obj=obj, symbol=symbol)
+def modulo(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): mod(matrix=matrix, obj=obj, symbol=symbol)
+def power(matrix:Matrix, obj:Union[Matrix,int,float,bool,complex], symbol:Optional[str]=None): pow(matrix=matrix, obj=obj, symbol=symbol)
+def absolute(matrix:Matrix, symbol:Optional[str]=None): abs(matrix=matrix, symbol=symbol)
+def positive(matrix:Matrix, symbol:Optional[str]=None): pow(matrix=matrix, symbol=symbol)
+def negative(matrix:Matrix, symbol:Optional[str]=None): neg(matrix=matrix, symbol=symbol)
 
 def eq(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool,complex],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool,complex],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -381,8 +382,8 @@ def eq(
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def ne(
-       matrix:"Matrix",
-       obj:Union["Matrix",int,float,bool,complex],
+       matrix:Matrix,
+       obj:Union[Matrix,int,float,bool,complex],
        symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -401,8 +402,8 @@ def ne(
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def gt(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool],
         symbol:Optional[str]=None    
     ):
     if isinstance(obj,Matrix):
@@ -421,8 +422,8 @@ def gt(
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def ge(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -441,8 +442,8 @@ def ge(
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def lt(
-       matrix:"Matrix",
-       obj:Union["Matrix",int,float,bool],
+       matrix:Matrix,
+       obj:Union[Matrix,int,float,bool],
        symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -461,8 +462,8 @@ def lt(
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def le(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,float,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,float,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -480,16 +481,16 @@ def le(
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-def equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): return eq(matrix=matrix, obj=obj, symbol=symbol)
-def not_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool,complex], symbol:Optional[str]=None): return ne(matrix=matrix, obj=obj, symbol=symbol)
-def greater(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return gt(matrix=matrix, obj=obj, symbol=symbol)
-def greater_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return ge(matrix=matrix, obj=obj, symbol=symbol)
-def lesser(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return lt(matrix=matrix, obj=obj, symbol=symbol)
-def lesser_equal(matrix:"Matrix", obj:Union["Matrix",int,float,bool], symbol:Optional[str]=None): return le(matrix=matrix, obj=obj, symbol=symbol)
+def equal(matrix:Matrix, obj:Union[Matrix,int,float,bool,complex], symbol:Optional[str]=None): return eq(matrix=matrix, obj=obj, symbol=symbol)
+def not_equal(matrix:Matrix, obj:Union[Matrix,int,float,bool,complex], symbol:Optional[str]=None): return ne(matrix=matrix, obj=obj, symbol=symbol)
+def greater(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): return gt(matrix=matrix, obj=obj, symbol=symbol)
+def greater_equal(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): return ge(matrix=matrix, obj=obj, symbol=symbol)
+def lesser(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): return lt(matrix=matrix, obj=obj, symbol=symbol)
+def lesser_equal(matrix:Matrix, obj:Union[Matrix,int,float,bool], symbol:Optional[str]=None): return le(matrix=matrix, obj=obj, symbol=symbol)
 
 def bitwise_and(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -508,8 +509,8 @@ def bitwise_and(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_or(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -527,7 +528,7 @@ def bitwise_or(
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
-def bitwise_invert(matrix:"Matrix", symbol:Optional[str]=None):
+def bitwise_invert(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -536,8 +537,8 @@ def bitwise_invert(matrix:"Matrix", symbol:Optional[str]=None):
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_nand(
-        matrix:"Matrix",
-        obj:"Matrix",
+        matrix:Matrix,
+        obj:Matrix,
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -556,8 +557,8 @@ def bitwise_nand(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_nor(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -576,8 +577,8 @@ def bitwise_nor(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_xor(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,bool],
         symbol:Optional[str]=None,
     ):
     if isinstance(obj,Matrix):
@@ -596,8 +597,8 @@ def bitwise_xor(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_xnor(
-        matrix:"Matrix",
-        obj:Union["Matrix",int,bool],
+        matrix:Matrix,
+        obj:Union[Matrix,int,bool],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -616,8 +617,8 @@ def bitwise_xnor(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_left_shift(
-        matrix:"Matrix",
-        obj:Union["Matrix",int],
+        matrix:Matrix,
+        obj:Union[Matrix,int],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -636,8 +637,8 @@ def bitwise_left_shift(
     return Matrix(new_mat, dtype=int, symbol=symbol)
 
 def bitwise_right_shift(
-        matrix:"Matrix",
-        obj:Union["Matrix",int],
+        matrix:Matrix,
+        obj:Union[Matrix,int],
         symbol:Optional[str]=None
     ):
     if isinstance(obj,Matrix):
@@ -673,15 +674,15 @@ def ones(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,1
 def zeros(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)
 def null(shape:Tuple[int,int], symbol:Optional[str]=None): return __fill(shape,0,symbol)
 def fill(shape:Tuple[int,int], value:Union[int,float,bool], symbol:Optional[str]=None): return __fill(shape,value,symbol)
-def ones_like(mat:"Matrix", symbol:Optional[str]=None):return ones((mat.row,mat.col),symbol)
-def zeros_like(mat:"Matrix", symbol:Optional[str]=None): return zeros((mat.row,mat.col),symbol)
-def null_like(mat:"Matrix", symbol:Optional[str]=None): return null((mat.row,mat.col),symbol)
-def fill_like(mat:"Matrix", value:Union[int,float,bool], symbol:Optional[str]=None): return fill((mat.row,mat.col),value,symbol)
-def rand_like(mat:"Matrix", seed:Optional[int]=None, symbol:Optional[str]=None):
+def ones_like(mat:Matrix, symbol:Optional[str]=None):return ones((mat.row,mat.col),symbol)
+def zeros_like(mat:Matrix, symbol:Optional[str]=None): return zeros((mat.row,mat.col),symbol)
+def null_like(mat:Matrix, symbol:Optional[str]=None): return null((mat.row,mat.col),symbol)
+def fill_like(mat:Matrix, value:Union[int,float,bool], symbol:Optional[str]=None): return fill((mat.row,mat.col),value,symbol)
+def rand_like(mat:Matrix, seed:Optional[int]=None, symbol:Optional[str]=None):
     res_dtype = complex if mat.dtype == complex else float
     return rand((mat.row,mat.col),dtype=res_dtype,seed=seed,symbol=symbol)
 
-def isnan(matrix:"Matrix", symbol:Optional[str]=None):
+def isnan(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -692,7 +693,7 @@ def isnan(matrix:"Matrix", symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-def isinf(matrix:"Matrix", symbol:Optional[str]=None):
+def isinf(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -703,7 +704,7 @@ def isinf(matrix:"Matrix", symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-def isposinf(matrix:"Matrix", symbol:Optional[str]=None):
+def isposinf(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -714,7 +715,7 @@ def isposinf(matrix:"Matrix", symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-def isneginf(matrix:"Matrix", symbol:Optional[str]=None):
+def isneginf(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -725,7 +726,7 @@ def isneginf(matrix:"Matrix", symbol:Optional[str]=None):
         new_mat.append(buffer)
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
-def isfinite(matrix:"Matrix", symbol:Optional[str]=None):
+def isfinite(matrix:Matrix, symbol:Optional[str]=None):
     new_mat = []
     for row in range(matrix.row):
         buffer = []
@@ -737,7 +738,7 @@ def isfinite(matrix:"Matrix", symbol:Optional[str]=None):
     return Matrix(new_mat, dtype=bool, symbol=symbol)
 
 def clip(
-        matrix:"Matrix",
+        matrix:Matrix,
         min_value:Union[int,float],
         max_value:Union[int,float],
         inplace:bool=False,
@@ -751,7 +752,7 @@ def clip(
     return Matrix(new_mat, dtype=__res_dtype_self__(matrix), symbol=symbol)
 
 def clamp(
-        matrix:"Matrix",
+        matrix:Matrix,
         min_value:Union[int,float],
         max_value:Union[int,float],
         symbol:Optional[str]=None    
@@ -1463,7 +1464,7 @@ class Matrix:
 
     def hstack(
             self,
-            other:"Matrix",
+            other:Matrix,
             symbol:Optional[str]=None
         ):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
@@ -1476,7 +1477,7 @@ class Matrix:
 
     def vstack(
             self,
-            other:"Matrix",
+            other:Matrix,
             symbol:Optional[str]=None
         ):
         if not isinstance(other,Matrix): raise TypeError(f"`{type(other).__name__}` can't be stacked with `Matrix`")
@@ -1601,7 +1602,7 @@ class Matrix:
                 result_matrix.append(row_cumprod)
         return Matrix(result_matrix, dtype=self.__dtype, symbol=symbol)
         
-    def gradient(self, axis:int=0):
+    def gradient(self, axis:int=0, symbol:Optional[str]=None):
         if axis not in [0,1]: raise ValueError("axis must be 0 (row-wise) and 1 (column-wise)")
         grad = []
         if axis == 0:
@@ -1622,7 +1623,7 @@ class Matrix:
                     else: grad_val = (self.__matrix[row][x + 1] - self.__matrix[row][x - 1]) / 2
                     grad_row.append(grad_val)
                 grad.append(grad_row)
-        return grad
+        return Matrix(grad, dtype=self.__dtype, symbol=symbol)
 
     def sigmoid(self, symbol:Optional[str]=None):
         new_mat = []
@@ -1632,12 +1633,85 @@ class Matrix:
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
+    def hard_sigmoid(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(min(0,max(1,(self.__matrix[row][x] + 1)/2)))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def hard_shrink(self, lambda_:Union[float,int]=0.5, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                if self.__matrix[row][x] > lambda_: buffer.append(self.__matrix[row][x])
+                elif self.__matrix[row][x] < -lambda_: buffer.append(self.__matrix[row][x])
+                else: buffer.append(0)
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def hard_tanh(
+            self,
+            min_value:Union[int,float]=-0.5,
+            max_val:Union[int,float]=0.5,
+            inplace:bool=False,
+            symbol:Optional[str]=None
+        ):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                if self.__matrix[row][x] > max_val: buffer.append(max_val)
+                elif self.__matrix[row][x] < min_value: buffer.append(min_value)
+                else: buffer.append(x)
+            new_mat.append(buffer)
+        if inplace: self.__matrix = new_mat; return self
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def hard_swish(self, inplace:bool=False, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                if self.__matrix[row][x] <= -3: buffer.append(0)
+                elif self.__matrix[row][x] >= 3: buffer.append(self.__matrix[row][x])
+                else: buffer.append(self.__matrix[row][x] * (self.__matrix + 3) / 6)
+            new_mat.append(buffer)
+        if inplace: self.__matrix = new_mat; return self
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
     def relu(self, symbol:Optional[str]=None):
         if self.__dtype == complex or self.__dtype == bool: raise TypeError(f"relu can't be implemented on 'complex' or 'bool' dtype matrices")
         new_mat = []
         for row in range(self.__row):
             buffer = []
             for x in range(self.__col): buffer.append(max(0,self.__matrix[row][x]))
+            new_mat.append(buffer)
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def leaky_relu(
+            self,
+            negative_slope:Union[int,float],
+            inplace:bool=False,
+            symbol:Optional[str]=None
+        ):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col):
+                if self.__matrix[row][x] >= 0: buffer.append(self.__matrix)
+                else: buffer.append(negative_slope * self.__matrix[row][x])
+            new_mat.append(buffer)
+        if inplace: self.__matrix = new_mat; return self
+        return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
+
+    def log_sigmoid(self, symbol:Optional[str]=None):
+        new_mat = []
+        for row in range(self.__row):
+            buffer = []
+            for x in range(self.__col): buffer.append(np.log10((1 + np.exp(-x))**-1))
             new_mat.append(buffer)
         return Matrix(new_mat, dtype=self.__dtype, symbol=symbol)
 
@@ -1867,7 +1941,7 @@ class Matrix:
                 softmin_matrix.append(softmin_row)
         return Matrix(softmin_matrix, dtype=self.__dtype, symbol=symbol)
 
-    def conv2d(self, kernel:"Matrix", padding:int=0):
+    def conv2d(self, kernel:Matrix, padding:int=0):
         padded_matrix = self.__pad_matrix(padding)
         kernel_rows, kernel_cols = kernel.__shape
         output_rows = self.__row - kernel_rows + 1 + 2 * padding
@@ -2043,33 +2117,33 @@ class Matrix:
     def pos(self): return +self
     def neg(self): return -self
 
-    def add(self, other:List[Union["Matrix",int,float,complex]]): return self + other
-    def sub(self, other:List[Union["Matrix",int,float,complex]]): return self - other
-    def mul(self, other:List[Union["Matrix",int,float,complex]]): return self * other
-    def truediv(self, other:List[Union["Matrix",int,float,complex]]): return self / other
-    def floordiv(self, other:List[Union["Matrix",int,float,complex]]): return self // other
-    def pow(self, other:list[Union["Matrix",int,float,complex]]): return self ** other
-    def mod(self, other:List[Union["Matrix",int,float,complex]]): return self % other
-    def matmul(self, other:"Matrix"): return self @ other
+    def add(self, other:List[Union[Matrix,int,float,complex]]): return self + other
+    def sub(self, other:List[Union[Matrix,int,float,complex]]): return self - other
+    def mul(self, other:List[Union[Matrix,int,float,complex]]): return self * other
+    def truediv(self, other:List[Union[Matrix,int,float,complex]]): return self / other
+    def floordiv(self, other:List[Union[Matrix,int,float,complex]]): return self // other
+    def pow(self, other:list[Union[Matrix,int,float,complex]]): return self ** other
+    def mod(self, other:List[Union[Matrix,int,float,complex]]): return self % other
+    def matmul(self, other:Matrix): return self @ other
     def abs(self): return self.__abs__()
     def absolute(self): return self.__abs__()
 
-    def bitwise_and(self, other:List[Union["Matrix",int]]): return self & other
-    def bitwise_nand(self, other:List[Union["Matrix",int]]): return ~(self & other)
-    def bitwise_or(self, other:List[Union["Matrix",int]]): return self | other
-    def bitwise_nor(self, other:List[Union["Matrix",int]]): return ~(self | other)
+    def bitwise_and(self, other:List[Union[Matrix,int]]): return self & other
+    def bitwise_nand(self, other:List[Union[Matrix,int]]): return ~(self & other)
+    def bitwise_or(self, other:List[Union[Matrix,int]]): return self | other
+    def bitwise_nor(self, other:List[Union[Matrix,int]]): return ~(self | other)
     def bitwise_invert(self): return ~self
-    def bitwise_xor(self, other:List[Union["Matrix",int]]): return self ^ other
-    def bitwise_xnor(self, other:List[Union["Matrix",int]]): return ~(self ^ other)
-    def bitwise_left_shift(self, other:List[Union["Matrix",int]]): return self << other
-    def bitwise_right_shift(self, other:List[Union["Matrix",int]]): return self >> other
+    def bitwise_xor(self, other:List[Union[Matrix,int]]): return self ^ other
+    def bitwise_xnor(self, other:List[Union[Matrix,int]]): return ~(self ^ other)
+    def bitwise_left_shift(self, other:List[Union[Matrix,int]]): return self << other
+    def bitwise_right_shift(self, other:List[Union[Matrix,int]]): return self >> other
 
-    def eq(self, other:List[Union["Matrix",int,float,complex]]): return  self == other
-    def ne(self, other:List[Union["Matrix",int,float,complex]]): return self != other
-    def gt(self, other:List[Union["Matrix",int,float]]): return self > other
-    def lt(self, other:List[Union["Matrix",int,float]]): return self < other
-    def ge(self, other:List[Union["Matrix",int,float]]): return self >= other
-    def le(self, other:List[Union["Matrix",int,float]]): return self <= other
+    def eq(self, other:List[Union[Matrix,int,float,complex]]): return  self == other
+    def ne(self, other:List[Union[Matrix,int,float,complex]]): return self != other
+    def gt(self, other:List[Union[Matrix,int,float]]): return self > other
+    def lt(self, other:List[Union[Matrix,int,float]]): return self < other
+    def ge(self, other:List[Union[Matrix,int,float]]): return self >= other
+    def le(self, other:List[Union[Matrix,int,float]]): return self <= other
 
     def rand_like(
             self,
@@ -2264,7 +2338,7 @@ class Matrix:
 
     def concat(
             self,
-            other:Union["Matrix",List],
+            other:Union[Matrix,List],
             axis:int=0,
             symbol:Optional[str]=None
         ):
