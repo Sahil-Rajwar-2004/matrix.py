@@ -63,7 +63,7 @@ import json
 import csv
 import os
 
-version = "0.8.2."
+version = "0.8.2"
 __mem__ = {}
 
 def from2d(
